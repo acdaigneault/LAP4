@@ -76,9 +76,13 @@ def dvdx(x, y, P):
 def couette_flow(x, y, P):
     return U*(y/b) + 1/(2*mu)*dpdx(x, y, P)*y*(y-b)
 
+def null(x, y, P): return 0
+
 #%% Conditions frontières et domaine
 # Conditions
-bcdata = (['NEUMANN', (dudy, dvdx)], ['DIRICHLET', (u, v)], ['NEUMANN', (dudy, dvdx)], ['DIRICHLET', (u, v)])
+#bcdata = (['NEUMANN', (dudy, dvdx)], ['DIRICHLET', (u, v)], ['NEUMANN', (dudy, dvdx)], ['DIRICHLET', (u, v)])
+bcdata = (['DIRICHLET', (u, v)], ['DIRICHLET', (u, v)], ['DIRICHLET', (u, v)], ['DIRICHLET', (u, v)])
+
 
 # Domaine
 domain = [0, L, 0, b]
@@ -88,16 +92,18 @@ case = Case(rho, mu, flow_velocities=(u, v), source_terms=(dpdx, dpdy), domain=d
 
 #%% Parametres de simulation et de post-traitement
 
-simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0},
-                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1},
-                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3}]
-postprocessing_parameters = ['solutions',
-                             ('plans', {'x': 0, 'y': 0}),
-                             ('comparison', {'mesh': [0, 1], 'diff': False})]
+simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 3}] #,
+#                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1},
+#                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3}]
+#postprocessing_parameters = ['solutions',
+#                             ('plans', {'x': 0, 'y': 0}),
+#                             ('comparison', {'mesh': [0, 1], 'diff': False})]
+
+postprocessing_parameters = ['solutions']
 
 processing = Processing(case, bcdata)
-processing.set_analytical_function((couette_flow, 0))
+processing.set_analytical_function((couette_flow, null))
 processing.set_simulations_and_postprocessing_parameters(simulations_parameters, postprocessing_parameters)
 processing.execute_simulations()
-
+plt.show()
 

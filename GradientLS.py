@@ -80,10 +80,7 @@ class GradientMoindresCarres:
     
     def get_phi(self):
         return self.phi
-    
-    def get_gradient(self):
-        return self.gradient
-    
+
     #Modificateurs
     def set_case(self,new):
         self.case=new
@@ -100,6 +97,9 @@ class GradientMoindresCarres:
     def set_gradient(self,new):
         self.gradient=new
 
+    def set_P(self,new):
+        self.P = new
+
     # Calcule le gradient du cas étudié
     def solve(self):
         
@@ -113,7 +113,7 @@ class GradientMoindresCarres:
         
         Returns
         -------
-        None
+        GRAD: Solution du gradient
         
         """
         
@@ -138,7 +138,7 @@ class GradientMoindresCarres:
 
             if bc_type == 'DIRICHLET':
                 # Calcul la différence des phi entre le point au centre de la face et au centre de l'élément
-                dphi = bc_value(xa, ya) - self.phi[element]
+                dphi = bc_value(xa, ya, self.P) - self.phi[element]
 
             if bc_type == 'NEUMANN':
                 # Modification de la position du point sur la face si Neumann
@@ -148,7 +148,7 @@ class GradientMoindresCarres:
                 dx, dy = np.dot([dx, dy], n) * n
 
                 # Application de la condition frontière au point sur la face perpendiculaire au point central
-                dphi = np.dot([dx, dy], n) * bc_value(xa, ya)
+                dphi = np.dot([dx, dy], n) * bc_value(xa, ya, self.P)
 
             # Remplissage de la matrice ATA
             ALS = np.array([[dx * dx, dx * dy], [dy * dx, dy * dy]])
@@ -176,4 +176,4 @@ class GradientMoindresCarres:
         ATAI = np.array([np.linalg.inv(ATA[i_tri]) for i_tri in range(NTRI)])
         GRAD = np.array([np.dot(ATAI[i_tri], B[i_tri]) for i_tri in range(NTRI)])
 
-        self.set_gradient(GRAD)
+        return GRAD

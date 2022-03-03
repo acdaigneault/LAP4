@@ -51,13 +51,25 @@ class PostProcessing:
         -------
         None
         """
+
+        # Calcule les normes de vitesse
+        phi_num, phi_ex = np.zeros(len(solutions[0][0])), np.zeros(len(solutions[0][0]))
+        for i in range(len(solutions[0][0])):
+            phi_num[i] = np.sqrt(solutions[0][0][i]**2 + solutions[0][1][i]**2)
+            phi_ex[i] = np.sqrt(solutions[1][0][i]**2 + solutions[1][1][i]**2)
+
         self.data.append({'n': n,
-                          'phi_num': solutions[0],
-                          'phi_exact': solutions[1],
+                          'u_num': solutions[0][0], 'u_ex': solutions[1][0],
+                          'v_num': solutions[0][1], 'v_ex': solutions[1][1],
+                          'phi_num': phi_num,
+                          'phi_exact': phi_ex,
                           'area': preprocessing_data[0],
                           'position': preprocessing_data[1],
-                          'Pe': simulation_paramaters['Pe'],
+                          'P': simulation_paramaters['P'],
                           'method': simulation_paramaters['method']})
+
+
+
 
     # Génère les graphiques des solutions numérique et analytique
     def show_solutions(self, mesh, title, save_path):
@@ -80,7 +92,7 @@ class PostProcessing:
         """
         Figure1, (NUM, EX) = plt.subplots(1, 2, figsize=(20, 8))
 
-        Figure1.suptitle(title + f" avec {self.data[mesh]['n']} éléments" + f' pour Pe = {self.data[mesh]["Pe"]} utilisant une méthode {self.data[mesh]["method"]}')
+        Figure1.suptitle(f"{title} avec {self.data[mesh]['n']} éléments pour P = {self.data[mesh]['P']} utilisant une méthode {self.data[mesh]['method']}")
 
         # Set levels of color for the colorbar
         levels = np.linspace(np.min([self.data[mesh]['phi_num'], self.data[mesh]['phi_exact']]),
@@ -135,7 +147,7 @@ class PostProcessing:
 
         Figure1, (COUPEX, COUPEY) = plt.subplots(1, 2, figsize=(20, 6))
 
-        Figure1.suptitle(title + f' pour Pe = {self.data[mesh]["Pe"]} utilisant une méthode {self.data[mesh]["method"]}')
+        Figure1.suptitle(f"{title} avec {self.data[mesh]['n']} éléments pour P = {self.data[mesh]['P']} utilisant une méthode {self.data[mesh]['method']}")
 
         Centres = self.data[mesh]['position']
 
@@ -199,14 +211,14 @@ class PostProcessing:
         c = plot1.tricontourf(center1[:, 0], center1[:, 1], self.data[mesh1]['phi_num'], levels=levels)
         plot1.set_xlabel("L (m)")
         plot1.set_ylabel("H (m)")
-        plot1.set_title(f"Mesh à {self.data[mesh1]['n']} éléments, Pe = {self.data[mesh1]['Pe']}, méthode = {self.data[mesh1]['method']}")
+        plot1.set_title(f"Mesh à {self.data[mesh1]['n']} éléments, P = {self.data[mesh1]['P']}, méthode = {self.data[mesh1]['method']}")
         plt.colorbar(c, ax=plot1)
 
         center2 = self.data[mesh2]['position']
         c = plot2.tricontourf(center2[:, 0], center2[:, 1], self.data[mesh2]['phi_num'], levels=levels)
         plot2.set_xlabel("L (m)")
         plot2.set_ylabel("H (m)")
-        plot2.set_title(f"Mesh à {self.data[mesh2]['n']} éléments, Pe = {self.data[mesh2]['Pe']}, méthode = {self.data[mesh2]['method']}")
+        plot2.set_title(f"Mesh à {self.data[mesh2]['n']} éléments, P = {self.data[mesh2]['P']}, méthode = {self.data[mesh2]['method']}")
         plt.colorbar(c, ax=plot2)
 
         if diff is True:
