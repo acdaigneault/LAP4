@@ -13,9 +13,9 @@ Matricule: 2167132
 """
 
 # ----------------------------------------------------------------------------#
-#                                 MEC6616                                    #
-#                        TPP2 Convection-Diffusion                           #
-#               Collard-Daigneault Audrey, ZAYNI Mohamad Karim               #
+#                                 MEC6616                                     #
+#                        LAP4 Équations du momentum                           #
+#               Collard-Daigneault Audrey, ZAYNI Mohamad Karim                #
 # ----------------------------------------------------------------------------#
 
 # %% NOTES D'UTILISATION
@@ -35,7 +35,6 @@ import sys
 
 
 # %% Fonctions Internes
-
 # Calcule les distances et vecteurs nécessaires selon les coordonnées fournies
 def compute_lengths_and_unit_vectors(pta, ptb, ptA, ptP):
     (xa, ya), (xb, yb), (xA, yA), (xP, yP) = pta, ptb, ptA, ptP
@@ -52,11 +51,22 @@ def compute_lengths_and_unit_vectors(pta, ptb, ptA, ptP):
 
     return dA, dKSI, n, eKSI, eETA
 
+# Calcule le terme source dû au gradient de pression
+def compute_source(P, dpdx, dpdy, volumes, centroids):
+    SGPXp, SGPYp = np.zeros(len(volumes)), np.zeros(len(volumes))
+
+    # Calcule les gradients de pression aux centroids des éléments * volume
+    for i in range(len(volumes)):
+        SGPXp[i] = dpdx(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
+        SGPYp[i] = dpdy(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
+
+    return SGPXp, SGPYp
+
+
 
 # %% Classe MethodesVolumesFinisConvDiff
-
 # Solveur utilisant la méthode des volumes finis Convection-Diffusion
-class MethodeVolumesFinis:
+class FVMMomentum:
     """
     Méthode de volumes finis pour un problème de diffusion.
 
@@ -114,6 +124,13 @@ class MethodeVolumesFinis:
     def get_analytical_function(self):
         return self.analytical_function
 
+    def get_P(self):
+         return self.P
+
+    # Modificateurs
+    def set_P(self, new):
+        self.P = new
+
     # Solveur VF
     def solve(self, method="CENTRE"):
         """
@@ -125,26 +142,32 @@ class MethodeVolumesFinis:
         
         """
         # Chercher les différentes variables
-        mesh = self.get_mesh()  # Maillage utilisé
-        case = self.get_case()  # cas en cours
-        centroids = self.centroids  # Chercher les centres des éléments
-        volumes = self.get_volumes()  # surfaces des éléments
-        bcdata = self.get_bcdata()  # Conditions limites
+        mesh = self.get_mesh()          # Maillage utilisé
+        case = self.get_case()          # cas en cours
+        centroids = self.centroids      # Chercher les centres des éléments
+        volumes = self.get_volumes()    # surfaces des éléments
+        bcdata = self.get_bcdata()      # Conditions limites
+        P = self.get_P()                # Paramètre modifié
 
-        # Initialisation des matrices et des vecteurs
+        # Initialisation des matrices et des vecteurs pour u et v
         NELEM = self.mesh_obj.get_number_of_elements()
-        A = np.zeros((NELEM, NELEM))
-        B = np.zeros(NELEM)
-        PHI = np.zeros(NELEM)
-        PHI_EX = np.zeros(NELEM)
-        GRAD = np.zeros((NELEM, 2))
+        Au = np.zeros((NELEM, NELEM))
+        Bu, Bv = np.zeros(NELEM), np.zeros(NELEM)
+        PHIu, PHIv = np.zeros(NELEM), np.zeros(NELEM)
+        PHI_EXu, PHI_EXv = np.zeros(NELEM), np.zeros(NELEM)
+        GRADu, GRADv = np.zeros((NELEM, 2)), np.zeros((NELEM, 2))
 
-        gamma, rho, Cp = self.case.get_physical_properties()
-        U = self.case.get_flow_velocity()
-        source = self.case.get_source()
-        analytical_function = self.analytical_function
+        # Variables locales
+        rho, mu = case.get_physical_properties()
+        dpdx, dpdy = case.get_sources()
+        analytical_function = self.get_analytical_function()
 
-        solver_moindrescarres = GLS.GradientMoindresCarres(case, mesh, bcdata, (volumes, centroids))
+        # GLS (on peut modifier ce solver pour momentum!! donc pour 2 variables)
+        solver_moindrescarresu = GLS.GradientMoindresCarres(case, mesh, bcdata, (volumes, centroids))
+        solver_moindrescarresv = GLS.GradientMoindresCarres(case, mesh, bcdata, (volumes, centroids))
+
+        # Calcule les termes sources reliés au gradient de pression
+        SGPXp, SGPYp = compute_source(P, dpdx, dpdy, volumes, centroids)
 
         for i in range(3):
 

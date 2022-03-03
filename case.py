@@ -15,7 +15,7 @@ Matricule: 2167132
 
 #----------------------------------------------------------------------------#
 #                                 MEC6616                                    #
-#                        TPP2 Convection-Diffusion                           #
+#                        LAP4 Équations du momentum                          #
 #               Collard-Daigneault Audrey, ZAYNI Mohamad Karim               #
 #----------------------------------------------------------------------------#
 
@@ -26,16 +26,9 @@ Classe pour préparer les données d'entrée
 
 """
 
-#%% IMPORTATION DES LIBRAIRIES
-
-from meshConnectivity import MeshConnectivity
 
 
 #%% Classe Case
-
-
-# Cas étudié regroupant le maillage, les conditions frontières, l'utilisation d'un solver
-# et la solution calculée.
 class Case:
     """
     Preparer les données d'entrée pour l'exemple à traiter.
@@ -53,29 +46,25 @@ class Case:
 
     """
     
-    def __init__(self, k, rho, Cp, flow_velocity, source_term, domain):
-        self.k = k
+    def __init__(self, rho, mu, flow_velocities, source_terms, domain):
         self.rho = rho
-        self.Cp = Cp
-        self.flow_velocity = flow_velocity
-        self.source_term = source_term
+        self.mu = mu
+        self.flow_velocities = flow_velocities
+        self.source_terms = source_terms
         self.domain = domain
     
     #Accesseurs
-    def get_source(self):
-        return self.source_term
+    def get_sources(self):
+        return self.source_terms
 
     def get_physical_properties(self):
-        return self.k, self.rho, self.Cp
+        return self.rho, self.mu
 
-    def get_flow_velocity(self):
-        return self.flow_velocity
+    def get_flow_velocities(self):
+        return self.flow_velocities
 
-    def set_source(self, source_term):
-        self.source_term = source_term
-
-    def set_Pe(self, Pe):
-        self.k = 1/Pe
+    def set_sources(self, source_terms):
+        self.source_terms = source_terms
 
     def get_domain(self):
         return self.domain

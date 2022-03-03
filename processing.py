@@ -14,7 +14,7 @@ Matricule: 2167132
 
 # ----------------------------------------------------------------------------#
 #                                 MEC6616                                    #
-#                        TPP2 Convection-Diffusion                           #
+#                        LAP4 Équations du momentum                          #
 #               Collard-Daigneault Audrey, ZAYNI Mohamad Karim               #
 # ----------------------------------------------------------------------------#
 
@@ -30,7 +30,7 @@ Classe pour traiter au préable le maillage donné.
 import numpy as np
 from meshConnectivity import MeshConnectivity
 from meshGenerator import MeshGenerator
-from solver import MethodeVolumesFinis
+from solver import FVMMomentum
 from postProcessing import PostProcessing
 
 
@@ -52,17 +52,22 @@ class Processing:
     def execute_simulations(self):
         postprocessing = PostProcessing()
 
+        # Excécute plusieurs simulations selon l'ensemble de parametres d'un simulation
         for sim_param in self.simulations_parameters:
+            # Crée le mesh et calcule les informations extraites à partir du maillage
             mesh_obj = self.compute_mesh_and_connectivity(sim_param)
             preprocessing_data = self.execute_preprocessing(mesh_obj)
-            self.case.set_Pe(sim_param['Pe'])
 
-            solver = MethodeVolumesFinis(self.case, mesh_obj, self.bcdata, preprocessing_data)
+            # Initiale le solver et paramètre la solution analytique et execute la solution selon la méthode
+            solver = FVMMomentum(self.case, mesh_obj, self.bcdata, preprocessing_data)
             solver.set_analytical_function(self.analytical_function)
+            solver.set_P(sim_param['P'])
             solutions = solver.solve(sim_param['method'])
 
+            # Store les résultats de la simulation et des infos pertinentes pour le post-traitement
             postprocessing.set_data(mesh_obj.get_number_of_elements(), solutions, preprocessing_data, sim_param)
 
+        # S'ils y a du post-traitement, il appelle la fonction qui les exécutes
         if self.postprocessing_parameters is not None:
             self.execute_postprocessing(postprocessing)
 
@@ -150,3 +155,4 @@ class Processing:
             centroids[i_elem] = [cx, cy]
 
         return volumes, centroids
+
