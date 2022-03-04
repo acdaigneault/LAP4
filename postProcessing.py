@@ -7,6 +7,10 @@ Utilité : Effectuer le post-traitement des données
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
+import pyvista as pv
+import pyvistaqt as pvQt
+from meshGenerator import MeshGenerator
+from meshPlotter import MeshPlotter
 
 
 def Coupe_X(Coordonnees, X, Solution, Analytique, Plan):
@@ -40,7 +44,7 @@ class PostProcessing:
         self.data = []          # Initialisation du dictionnaire de données
 
     # Ajoute les données selon un nombre d'éléments'
-    def set_data(self, n, solutions, preprocessing_data, simulation_paramaters):
+    def set_data(self, mesh, solutions, preprocessing_data, simulation_paramaters):
         """
         Modifier les données de l'exemple traité.
         Parameters
@@ -58,9 +62,10 @@ class PostProcessing:
             phi_num[i] = np.sqrt(solutions[0][0][i]**2 + solutions[0][1][i]**2)
             phi_ex[i] = np.sqrt(solutions[1][0][i]**2 + solutions[1][1][i]**2)
 
-        self.data.append({'n': n,
-                          'u_num': solutions[0][0], 'u_ex': solutions[1][0],
-                          'v_num': solutions[0][1], 'v_ex': solutions[1][1],
+        self.data.append({'n': mesh.get_number_of_elements(),
+                          'mesh': mesh,
+                          'u_num': solutions[0][0], 'u_exact': solutions[1][0],
+                          'v_num': solutions[0][1], 'v_exact': solutions[1][1],
                           'phi_num': phi_num,
                           'phi_exact': phi_ex,
                           'area': preprocessing_data[0],
@@ -72,13 +77,13 @@ class PostProcessing:
 
 
     # Génère les graphiques des solutions numérique et analytique
-    def show_solutions(self, mesh, title, save_path):
+    def show_solutions(self, i_mesh, title, save_path):
         """
         Affichage des graphiques qui montrent la différence entre la solution
         numérique et la solution analytique
         Parameters
         ----------
-        mesh: int
+        i_mesh: int
             Maillage de l'exemple traité.
 
         title: str
@@ -92,25 +97,25 @@ class PostProcessing:
         """
         Figure1, (NUM, EX) = plt.subplots(1, 2, figsize=(20, 8))
 
-        Figure1.suptitle(f"{title} avec {self.data[mesh]['n']} éléments pour P = {self.data[mesh]['P']} utilisant une méthode {self.data[mesh]['method']}")
+        Figure1.suptitle(f"{title} avec {self.data[i_mesh]['n']} éléments pour P = {self.data[i_mesh]['P']} utilisant une méthode {self.data[i_mesh]['method']}")
 
         # Set levels of color for the colorbar
-        levels = np.linspace(np.min([self.data[mesh]['phi_num'], self.data[mesh]['phi_exact']]),
-                             np.max([self.data[mesh]['phi_num'], self.data[mesh]['phi_exact']]), num=30)
+        levels = np.linspace(np.min([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]),
+                             np.max([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]), num=30)
 
         # Solution numérique
-        c = NUM.tricontourf(self.data[mesh]['position'][:, 0],
-                            self.data[mesh]['position'][:, 1],
-                            self.data[mesh]['phi_num'], levels=levels)
+        c = NUM.tricontourf(self.data[i_mesh]['position'][:, 0],
+                            self.data[i_mesh]['position'][:, 1],
+                            self.data[i_mesh]['u_num'], levels=levels)
         plt.colorbar(c, ax=NUM)
         NUM.set_xlabel("L (m)")
         NUM.set_ylabel("H (m)")
         NUM.set_title("Solution numérique")
 
         # Solution analytique/MMS
-        c = EX.tricontourf(self.data[mesh]['position'][:, 0],
-                           self.data[mesh]['position'][:, 1],
-                           self.data[mesh]['phi_exact'], levels=levels)
+        c = EX.tricontourf(self.data[i_mesh]['position'][:, 0],
+                           self.data[i_mesh]['position'][:, 1],
+                           self.data[i_mesh]['u_exact'], levels=levels)
         plt.colorbar(c, ax=EX)
         EX.set_xlabel("L (m)")
         EX.set_ylabel("H (m)")
@@ -118,14 +123,14 @@ class PostProcessing:
 
         plt.savefig(save_path, dpi=200)
 
-    def show_plan_solutions(self, mesh, title, save_path, X_Coupe, Y_Coupe):
+    def show_plan_solutions(self, i_mesh, title, save_path, X_Coupe, Y_Coupe):
 
         """
         Affichage des graphiques qui montrent les résultats dans des coupes
         en X ou en Y
         Parameters
         ----------
-        mesh: mesh
+        i_mesh: mesh
             Maillage de l'exemple traité.
 
         title: str
@@ -147,14 +152,14 @@ class PostProcessing:
 
         Figure1, (COUPEX, COUPEY) = plt.subplots(1, 2, figsize=(20, 6))
 
-        Figure1.suptitle(f"{title} avec {self.data[mesh]['n']} éléments pour P = {self.data[mesh]['P']} utilisant une méthode {self.data[mesh]['method']}")
+        Figure1.suptitle(f"{title} avec {self.data[i_mesh]['n']} éléments pour P = {self.data[i_mesh]['P']} utilisant une méthode {self.data[i_mesh]['method']}")
 
-        Centres = self.data[mesh]['position']
+        Centres = self.data[i_mesh]['position']
 
         Elem_ds_coupeX, Solution_coupeX, SolutionEX_coupeX = \
-            Coupe_X(Centres, X_Coupe, self.data[mesh]['phi_num'], self.data[mesh]['phi_exact'], 0)
+            Coupe_X(Centres, X_Coupe, self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact'], 0)
         Elem_ds_coupeY, Solution_coupeY, SolutionEX_coupeY = \
-            Coupe_X(Centres, Y_Coupe, self.data[mesh]['phi_num'], self.data[mesh]['phi_exact'], 1)
+            Coupe_X(Centres, Y_Coupe, self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact'], 1)
 
         COUPEX.plot(Solution_coupeX, Elem_ds_coupeX[:, 1], label="Solution Numérique")
         COUPEX.plot(SolutionEX_coupeX, Elem_ds_coupeX[:, 1], '--', label="Solution MMS")
@@ -173,16 +178,26 @@ class PostProcessing:
         # Enregistrer
         plt.savefig(save_path, dpi=200)
 
-    def show_mesh_differences(self, mesh1, mesh2, title, save_path, diff=False):
+    def show_pyvista(self, i_mesh):
+        # Affichage de champ scalaire avec pyvista du dernier maillage
+        plotter = MeshPlotter()
+        nodes, elements = plotter.prepare_data_for_pyvista(self.data[i_mesh]['mesh'])
+        pv_mesh = pv.PolyData(nodes, elements)
+        pv_mesh['Vitesse u'] = self.data[i_mesh]['u_num']
+        pl = pvQt.BackgroundPlotter()
+        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u', cmap="RdBu")
+        pl.show()
+
+    def show_mesh_differences(self, i_mesh1, i_mesh2, title, save_path, diff=False):
         """
         Affichage des graphiques qui montrent les résultats entre deux types
         de maillage
         Parameters
         ----------
-        mesh1: mesh
+        i_mesh1: mesh
             Maillage 1 de l'exemple traité.
 
-        mesh2: mesh
+        i_mesh2: mesh
             Maillage 2 de l'exemple traité.
 
         title: str
@@ -204,32 +219,32 @@ class PostProcessing:
 
         figure.suptitle(title)
         # Set levels of color for the colorbar
-        levels = np.linspace(np.min(np.append(self.data[mesh1]['phi_num'], self.data[mesh2]['phi_num'])),
-                             np.max(np.append(self.data[mesh1]['phi_num'], self.data[mesh2]['phi_num'])), num=40)
+        levels = np.linspace(np.min(np.append(self.data[i_mesh1]['phi_num'], self.data[i_mesh2]['phi_num'])),
+                             np.max(np.append(self.data[i_mesh1]['phi_num'], self.data[i_mesh2]['phi_num'])), num=40)
 
-        center1 = self.data[mesh1]['position']
-        c = plot1.tricontourf(center1[:, 0], center1[:, 1], self.data[mesh1]['phi_num'], levels=levels)
+        center1 = self.data[i_mesh1]['position']
+        c = plot1.tricontourf(center1[:, 0], center1[:, 1], self.data[i_mesh1]['phi_num'], levels=levels)
         plot1.set_xlabel("L (m)")
         plot1.set_ylabel("H (m)")
-        plot1.set_title(f"Mesh à {self.data[mesh1]['n']} éléments, P = {self.data[mesh1]['P']}, méthode = {self.data[mesh1]['method']}")
+        plot1.set_title(f"Mesh à {self.data[i_mesh1]['n']} éléments, P = {self.data[i_mesh1]['P']}, méthode = {self.data[i_mesh1]['method']}")
         plt.colorbar(c, ax=plot1)
 
-        center2 = self.data[mesh2]['position']
-        c = plot2.tricontourf(center2[:, 0], center2[:, 1], self.data[mesh2]['phi_num'], levels=levels)
+        center2 = self.data[i_mesh2]['position']
+        c = plot2.tricontourf(center2[:, 0], center2[:, 1], self.data[i_mesh2]['phi_num'], levels=levels)
         plot2.set_xlabel("L (m)")
         plot2.set_ylabel("H (m)")
-        plot2.set_title(f"Mesh à {self.data[mesh2]['n']} éléments, P = {self.data[mesh2]['P']}, méthode = {self.data[mesh2]['method']}")
+        plot2.set_title(f"Mesh à {self.data[i_mesh2]['n']} éléments, P = {self.data[i_mesh2]['P']}, méthode = {self.data[i_mesh2]['method']}")
         plt.colorbar(c, ax=plot2)
 
         if diff is True:
-            err = np.abs(self.data[mesh1]['phi_num'] - self.data[mesh2]['phi_num'])
+            err = np.abs(self.data[i_mesh1]['phi_num'] - self.data[i_mesh2]['phi_num'])
 
             levels = np.linspace(np.min(err), np.max(err), num=40)
 
             c = plot3.tricontourf(center1[:, 0], center1[:, 1], err, levels=levels)
             plot3.set_xlabel("L (m)")
             plot3.set_ylabel("H (m)")
-            plot3.set_title(f"Erreur absolue entre les maillages à {self.data[mesh1]['n']} éléments")
+            plot3.set_title(f"Erreur absolue entre les maillages à {self.data[i_mesh1]['n']} éléments")
             plt.colorbar(c, ax=plot3)
 
 

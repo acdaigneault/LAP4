@@ -65,7 +65,7 @@ class Processing:
             solutions = solver.solve(sim_param['method'])
 
             # Store les résultats de la simulation et des infos pertinentes pour le post-traitement
-            postprocessing.set_data(mesh_obj.get_number_of_elements(), solutions, preprocessing_data, sim_param)
+            postprocessing.set_data(mesh_obj, solutions, preprocessing_data, sim_param)
 
         # S'ils y a du post-traitement, il appelle la fonction qui les exécutes
         if self.postprocessing_parameters is not None:
@@ -74,22 +74,20 @@ class Processing:
     def execute_postprocessing(self, postprocessing):
         for postproc_param in self.postprocessing_parameters:
             if postproc_param == 'solutions':
-                postprocessing.show_solutions(mesh=-1,
-                                              title='Solution numérique et MMS',
+                postprocessing.show_solutions(i_mesh=-1, title='Solution numérique et MMS',
                                               save_path='images/solutions.png')
             elif postproc_param[0] == "plans":
-                postprocessing.show_plan_solutions(mesh=-1,
-                                                   title='Solutions selon des coupes',
-                                                   save_path='images/plans',
-                                                   X_Coupe=postproc_param[1]['x'],
+                postprocessing.show_plan_solutions(i_mesh=-1, title='Solutions selon des coupes',
+                                                   save_path='images/plans', X_Coupe=postproc_param[1]['x'],
                                                    Y_Coupe=postproc_param[1]['y'])
             elif postproc_param == "error":
                 postprocessing.show_error()
             elif postproc_param[0] == 'comparison':
                 postprocessing.show_mesh_differences(postproc_param[1]['mesh'][0], postproc_param[1]['mesh'][1],
-                                                     title='Comparaison de 2 simulations',
-                                                     save_path='images/diff',
+                                                     title='Comparaison de 2 simulations', save_path='images/diff',
                                                      diff=postproc_param[1]['diff'])
+            elif postproc_param[0] == "pyvista":
+                postprocessing.show_pyvista(postproc_param[1]['mesh'])
             else:
                 print(f'Demande de post traitement {postproc_param} invalide.')
 

@@ -192,7 +192,8 @@ class FVMMomentum:
         it = 0
         while convergence is False:
             # Boucle pour le cross-diffusion
-            for i in range(2):
+            """J'ai mis 1 car on est en quad structuré alors pas besoin de cross diff pour tester"""
+            for i in range(1):
 
                 # Parcours les faces internes et remplis la matrice A et le vecteur B
                 for i_face in range(mesh.get_number_of_boundary_faces(), mesh.get_number_of_faces()):
@@ -208,8 +209,8 @@ class FVMMomentum:
                                                          ptP=centroids[left_elem])
 
                     # Calcule du flux au centre de la face (moyenne simple : (Fxp+FxA)/2 = rho(uxp+uxA)/2)
-                    Fx, Fy = rho*(u[left_elem] + u[right_elem])/2, rho*(v[left_elem] + v[right_elem])/2
-                    F = np.dot([Fx, Fy], n) * dA # Débit massique qui traverse la face
+                    Fx, Fy = rho*0.5*(u[left_elem] + u[right_elem]), rho*0.5*(v[left_elem] + v[right_elem])
+                    F = np.dot([Fx, Fy], n) * dA  # Débit massique qui traverse la face
 
                     # Calcule les projections de vecteurs unitaires
                     PNKSI = np.dot(n, eKSI)       # Projection de n sur ξ
@@ -240,7 +241,9 @@ class FVMMomentum:
                         sys.exit()
 
                     Bu[left_elem]  += Sdc_x
-                    Bu[right_elem] -= Sdc_y
+                    Bu[right_elem] -= Sdc_x
+                    Bv[left_elem]  += Sdc_y
+                    Bv[right_elem] -= Sdc_y
 
 
                 # Parcours les faces sur les conditions frontières et remplis la matrice A et le vecteur B
@@ -298,12 +301,22 @@ class FVMMomentum:
                         """ DOIT ETRE IMPLEMENTÉ!!!  Pareil pour le GLS !!!!! je pense
                         # Comment calculer le F pour une condition de Neumann?? """
                     elif bc_type == "NEUMANN":
-                        Bu[element] += mu * bc_x(xa, ya) * dA
+                        phix = u[element] - bc_x(xa, ya, P) * PNKSI * dKSI  # ui à la CF
+                        phiy = v[element] - bc_y(xa, ya, P) * PNKSI * dKSI  # vi à la CF
 
-                        if method == "UPWIND":
+                        Fx, Fy = rho*phix, rho*phiy
+                        F = np.dot(np.array([Fx, Fy]), n) * dA  # Débit massique qui traverse la face
+
+                        if method == "CENTRE":
+                            Bu[element] += mu * bc_x(xa, ya, P) * dA
+                            Bv[element] += mu * bc_y(xa, ya, P) * dA
+                        elif method == "UPWIND":
                             Au[element, element] += F
-                            Bu[element] += -F * bc_x(xa, ya) * PNKSI * dETA
-
+                            Bu[element] += (mu * dA - F * PNKSI * dKSI) * bc_x(xa, ya, P)
+                            Bv[element] += (mu * dA - F * PNKSI * dKSI) * bc_y(xa, ya, P)
+                        else:
+                            print("La méthode choisie n'est pas convenable, veuillez choisir CENTRE ou UPWIND")
+                            sys.exit()
 
                 # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
                 for i_elem in range(mesh.get_number_of_elements()):

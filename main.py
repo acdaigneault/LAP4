@@ -66,21 +66,20 @@ def u(x, y, P):
 def v(x, y, P):
     return 0
 
-f_dudy = sp.lambdify([x, y, P], sp.diff(y*(1-P*(1-y)), y, 1), "numpy")
-def dudy(x, y, P):
-    return f_dudy(x, y, P)
+def dudx(x, y, P):
+    return 0
 def dvdx(x, y, P):
     return 0
 
 # Solution analytique
 def couette_flow(x, y, P):
     return U*(y/b) + 1/(2*mu)*dpdx(x, y, P)*y*(y-b)
-
 def null(x, y, P): return 0
+
 
 #%% Conditions frontières et domaine
 # Conditions
-#bcdata = (['NEUMANN', (dudy, dvdx)], ['DIRICHLET', (u, v)], ['NEUMANN', (dudy, dvdx)], ['DIRICHLET', (u, v)])
+#bcdata = (['NEUMANN', (dudx, dvdx)], ['DIRICHLET', (u, v)], ['NEUMANN', (dudx, dvdx)], ['DIRICHLET', (u, v)])
 bcdata = (['DIRICHLET', (u, v)], ['DIRICHLET', (u, v)], ['DIRICHLET', (u, v)], ['DIRICHLET', (u, v)])
 
 
@@ -92,18 +91,23 @@ case = Case(rho, mu, flow_velocities=(u, v), source_terms=(dpdx, dpdy), domain=d
 
 #%% Parametres de simulation et de post-traitement
 
-simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 3}] #,
-#                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1},
-#                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3}]
+simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3}] #,
+#                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0},
+#                          {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1}]
 #postprocessing_parameters = ['solutions',
 #                             ('plans', {'x': 0, 'y': 0}),
 #                             ('comparison', {'mesh': [0, 1], 'diff': False})]
 
-postprocessing_parameters = ['solutions']
+postprocessing_parameters = ['solutions',
+                            ('plans', {'x': 0.5, 'y': 0.5}),
+                            ('pyvista', {'mesh': 0})]
 
 processing = Processing(case, bcdata)
 processing.set_analytical_function((couette_flow, null))
 processing.set_simulations_and_postprocessing_parameters(simulations_parameters, postprocessing_parameters)
 processing.execute_simulations()
+
+
+
 plt.show()
 
