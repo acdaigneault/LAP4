@@ -171,6 +171,7 @@ class FVMMomentum:
         dpdx, dpdy = case.get_sources()
         analytical_function = self.get_analytical_function()
 
+
         # GLS (on peut modifier ce solver pour momentum!! donc pour 2 variables)
         bcdata_x = ([bcdata[0][0], bcdata[0][1][0]], [bcdata[1][0], bcdata[1][1][0]],
                     [bcdata[2][0], bcdata[2][1][0]], [bcdata[3][0], bcdata[3][1][0]])
@@ -180,7 +181,6 @@ class FVMMomentum:
         solver_moindrescarresv = GLS.GradientMoindresCarres(case, mesh, bcdata_y, (volumes, centroids))
         solver_moindrescarresu.set_P(P)
         solver_moindrescarresv.set_P(P)
-
 
         # Calcule les termes sources reliés au gradient de pression
         SGPXp, SGPYp = compute_source(P, dpdx, dpdy, volumes, centroids)
@@ -297,9 +297,6 @@ class FVMMomentum:
                             print("La méthode choisie n'est pas convenable, veuillez choisir CENTRE ou UPWIND")
                             sys.exit()
 
-
-                        """ DOIT ETRE IMPLEMENTÉ!!!  Pareil pour le GLS !!!!! je pense
-                        # Comment calculer le F pour une condition de Neumann?? """
                     elif bc_type == "NEUMANN":
                         phix = u[element] - bc_x(xa, ya, P) * PNKSI * dKSI  # ui à la CF
                         phiy = v[element] - bc_y(xa, ya, P) * PNKSI * dKSI  # vi à la CF
@@ -320,8 +317,8 @@ class FVMMomentum:
 
                 # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
                 for i_elem in range(mesh.get_number_of_elements()):
-                    Bu[i_elem] += SGPXp[i_elem]
-                    Bv[i_elem] += SGPYp[i_elem]
+                    Bu[i_elem] -= SGPXp[i_elem]
+                    Bv[i_elem] -= SGPYp[i_elem]
                     PHI_EXu[i_elem] = analytical_function[0](centroids[i_elem][0], centroids[i_elem][1], P)
                     PHI_EXv[i_elem] = analytical_function[1](centroids[i_elem][0], centroids[i_elem][1], P)
 
@@ -343,8 +340,8 @@ class FVMMomentum:
             Rv = np.linalg.norm(np.dot(Av, v) - Bv0)
 
             """TOLERANCE DOIT ÊTRE DE 1E-6 AU MOINS"""
-            print(Ru, Rv)
-            tol = 1e-2
+            #print(Ru, Rv)
+            tol = 1e-6
             if it != 0 and Ru < tol and Rv < tol:
                 # Solution de l'itération précédence est bonne
                 convergence = True

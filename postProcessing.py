@@ -157,13 +157,13 @@ class PostProcessing:
         Centres = self.data[i_mesh]['position']
 
         Elem_ds_coupeX, Solution_coupeX, SolutionEX_coupeX = \
-            Coupe_X(Centres, X_Coupe, self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact'], 0)
+            Coupe_X(Centres, X_Coupe, self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact'], 0)
         Elem_ds_coupeY, Solution_coupeY, SolutionEX_coupeY = \
-            Coupe_X(Centres, Y_Coupe, self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact'], 1)
+            Coupe_X(Centres, Y_Coupe, self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact'], 1)
 
         COUPEX.plot(Solution_coupeX, Elem_ds_coupeX[:, 1], label="Solution Numérique")
         COUPEX.plot(SolutionEX_coupeX, Elem_ds_coupeX[:, 1], '--', label="Solution MMS")
-        COUPEX.set_xlabel("Température")
+        COUPEX.set_xlabel("Vitesse")
         COUPEX.set_ylabel("Y (m)")
         COUPEX.set_title(f"Solution dans une coupe à X = {X_Coupe}")
         COUPEX.legend()
@@ -171,7 +171,7 @@ class PostProcessing:
         COUPEY.plot(Elem_ds_coupeY[:, 0], Solution_coupeY, label="Solution Numérique")
         COUPEY.plot(Elem_ds_coupeY[:, 0], SolutionEX_coupeY, '--', label="Solution MMS/analytique")
         COUPEY.set_xlabel("X (m)")
-        COUPEY.set_ylabel("Température")
+        COUPEY.set_ylabel("Vitesse")
         COUPEY.set_title(f"Solution dans une coupe à Y = {Y_Coupe}")
         COUPEY.legend()
 
@@ -179,13 +179,26 @@ class PostProcessing:
         plt.savefig(save_path, dpi=200)
 
     def show_pyvista(self, i_mesh):
-        # Affichage de champ scalaire avec pyvista du dernier maillage
+        # Préparation du maillage
         plotter = MeshPlotter()
         nodes, elements = plotter.prepare_data_for_pyvista(self.data[i_mesh]['mesh'])
         pv_mesh = pv.PolyData(nodes, elements)
-        pv_mesh['Vitesse u'] = self.data[i_mesh]['u_num']
-        pl = pvQt.BackgroundPlotter()
-        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u', cmap="RdBu")
+
+        # Solutions numériques et analytiques
+        pv_mesh['Vitesse u numérique'] = self.data[i_mesh]['u_num']
+        pv_mesh['Vitesse u analytique'] = self.data[i_mesh]['u_exact']
+
+        # Création des graphiques
+        pl = pvQt.BackgroundPlotter(shape=(1, 2))
+        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u numérique', cmap="RdBu")
+        pl.camera_position = 'xy'
+        pl.show_grid()
+
+        pl.subplot(0, 1)
+        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u analytique', cmap="RdBu")
+        pl.camera_position = 'xy'
+        pl.show_grid()
+
         pl.show()
 
     def show_mesh_differences(self, i_mesh1, i_mesh2, title, save_path, diff=False):

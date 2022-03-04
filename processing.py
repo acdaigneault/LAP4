@@ -87,7 +87,9 @@ class Processing:
                                                      title='Comparaison de 2 simulations', save_path='images/diff',
                                                      diff=postproc_param[1]['diff'])
             elif postproc_param[0] == "pyvista":
-                postprocessing.show_pyvista(postproc_param[1]['mesh'])
+                for mesh in postproc_param[1]['mesh']:
+                    print(mesh)
+                    postprocessing.show_pyvista(mesh)
             else:
                 print(f'Demande de post traitement {postproc_param} invalide.')
 
