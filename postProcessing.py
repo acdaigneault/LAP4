@@ -174,6 +174,7 @@ class PostProcessing:
         COUPEY.set_ylabel("Vitesse")
         COUPEY.set_title(f"Solution dans une coupe à Y = {Y_Coupe}")
         COUPEY.legend()
+        plt.show(block=False)
 
         # Enregistrer
         plt.savefig(save_path, dpi=200)
@@ -189,16 +190,22 @@ class PostProcessing:
         pv_mesh['Vitesse u analytique'] = self.data[i_mesh]['u_exact']
 
         # Création des graphiques
-        pl = pvQt.BackgroundPlotter(shape=(1, 2))
+        pl = pv.Plotter(shape=(1, 2))  # Avant pvQt.BackgroundPlotter()
+        pl.subplot(0, 0)
+        pl.add_text(f"Solution numérique\n {self.data[i_mesh]['n']} éléments\n "
+                    f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
         pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u numérique', cmap="RdBu")
         pl.camera_position = 'xy'
-        pl.show_grid()
+        pl.show_bounds()
 
         pl.subplot(0, 1)
+        pl.add_text(f"Solution analytique\n {self.data[i_mesh]['n']} éléments\n "
+                    f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
         pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u analytique', cmap="RdBu")
         pl.camera_position = 'xy'
-        pl.show_grid()
+        pl.show_bounds()
 
+        pl.link_views()
         pl.show()
 
     def show_mesh_differences(self, i_mesh1, i_mesh2, title, save_path, diff=False):
@@ -300,3 +307,5 @@ class PostProcessing:
         ax_E.set_xlabel('Grandeur (h)')
         ax_E.set_ylabel('Erreur (E)')
         ax_E.add_artist(text)
+
+        plt.show()

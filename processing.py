@@ -18,47 +18,98 @@ Matricule: 2167132
 #               Collard-Daigneault Audrey, ZAYNI Mohamad Karim               #
 # ----------------------------------------------------------------------------#
 
-# %% NOTES D'UTILISATION
-"""
-
-Classe pour traiter au préable le maillage donné. 
-
-"""
-
-# %% IMPORTATION DES LIBRAIRIES
-
+# %% IMPORT
 import numpy as np
 from meshConnectivity import MeshConnectivity
 from meshGenerator import MeshGenerator
 from solver import FVMMomentum
 from postProcessing import PostProcessing
 
-
-# %% Classe Preprocessing
+# %% CLASSE
 class Processing:
+    """
+    Exécute les simulations demandées selon le cas et le post-traitement
+
+    Parameters
+    ----------
+    case: case
+    Cas traité qui a les informations sur la physique du problème
+
+    bcdata: tuple
+    Ensemble de donnée sur les conditions limites aux parois
+
+    Attributes
+    -------
+    case: Case
+    Cas traité qui a les informations sur la physique du problème
+
+    bcdata: Tuple
+    Ensemble de donnée sur les conditions limites aux parois
+
+    simulations_parameters: List[Dict[str, str]]
+    Liste de dictionnaires ayant le nom des paramètres de simulation et leurs valeurs
+    
+    postprocessing_parameters: Dict[str, Dict[str, float]]]
+    Dictionnaire ayant le nom des paramètres de post-traitement et les arguments nécessaires
+
+    """
     def __init__(self, case, bcdata):
         self.case = case
         self.bcdata = bcdata
         self.simulations_parameters = None
         self.postprocessing_parameters = None
 
-    def set_analytical_function(self, analytical_function):
+    def set_analytical_function(self, analytical_function) -> None:
+        """
+        Ajoute une solution analytique au problème simulé lorsque disponible et/ou nécessaire
+
+        Parameters
+        ----------
+        analytical_function: Tuple[function, function]
+        Fonction analytique du problème (u(x,y) et v(x,y))
+        """
         self.analytical_function = analytical_function
 
-    def set_simulations_and_postprocessing_parameters(self, simulations_parameters, postprocessing_parameters):
+    def set_simulations_and_postprocessing_parameters(self, simulations_parameters, postprocessing_parameters) -> None:
+        """
+        Paramétrise les simulations à exécuter et les post-traitement à réaliser
+
+        Parameters
+        ----------
+        simulations_parameters: List[Dict[str, str]
+        Liste de dictionnaires ayant le nom des paramètres de simulation et leurs valeurs
+
+        postprocessing_parameters: Dict[str, Dict[str, float]]]
+        Dictionnaire ayant le nom des paramètres de post-traitement et les arguments nécessaires
+
+        Returns
+        -------
+        None
+        """
         self.simulations_parameters = simulations_parameters
         self.postprocessing_parameters = postprocessing_parameters
 
     def execute_simulations(self):
+        """
+        Exécute les simulations demandées
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
         postprocessing = PostProcessing()
 
-        # Excécute plusieurs simulations selon l'ensemble de parametres d'un simulation
+        # Excécute plusieurs simulations selon l'ensemble de parametres de simulation
         for sim_param in self.simulations_parameters:
             # Crée le mesh et calcule les informations extraites à partir du maillage
             mesh_obj = self.compute_mesh_and_connectivity(sim_param)
             preprocessing_data = self.execute_preprocessing(mesh_obj)
 
-            # Initiale le solver et paramètre la solution analytique et execute la solution selon la méthode
+            # Initialise le solver et paramétrise la solution analytique et execute la solution selon la méthode
             solver = FVMMomentum(self.case, mesh_obj, self.bcdata, preprocessing_data)
             solver.set_analytical_function(self.analytical_function)
             solver.set_P(sim_param['P'])
@@ -71,40 +122,59 @@ class Processing:
         if self.postprocessing_parameters is not None:
             self.execute_postprocessing(postprocessing)
 
-    def execute_postprocessing(self, postprocessing):
-        for postproc_param in self.postprocessing_parameters:
-            if postproc_param == 'solutions':
+    def execute_postprocessing(self, postprocessing) -> None:
+        """
+        Exécute le post-traitement demandé
+
+        Parameters
+        ----------
+        postprocessing: postProcessing.PostProcessing
+        Object de post-traitement qui a storé les données pendant la simulation
+
+        Returns
+        -------
+        None
+        """
+
+        # Itére sur les keys du dictionnaire pour déterminer les post-traitement à faire
+        pp_params = self.postprocessing_parameters
+        for param_name in pp_params:
+
+            # Affiche les solutions avec la fonction tricontourf() de matplotlib
+            if param_name == 'solutions':
                 postprocessing.show_solutions(i_mesh=-1, title='Solution numérique et MMS',
                                               save_path='images/solutions.png')
-            elif postproc_param[0] == "plans":
+
+            # Affiche la solution selon un plan en x et un en y
+            elif param_name == 'plans':
                 postprocessing.show_plan_solutions(i_mesh=-1, title='Solutions selon des coupes',
-                                                   save_path='images/plans', X_Coupe=postproc_param[1]['x'],
-                                                   Y_Coupe=postproc_param[1]['y'])
-            elif postproc_param == "error":
+                                                   save_path='images/plans', X_Coupe=pp_params[param_name]['x'],
+                                                   Y_Coupe=pp_params[param_name]['y'])
+
+            # Calcule l'ordre de convergence et montre l'erreur L2 selon la longueur caractéristique l2
+            elif param_name == 'error':
                 postprocessing.show_error()
-            elif postproc_param[0] == 'comparison':
-                postprocessing.show_mesh_differences(postproc_param[1]['mesh'][0], postproc_param[1]['mesh'][1],
-                                                     title='Comparaison de 2 simulations', save_path='images/diff',
-                                                     diff=postproc_param[1]['diff'])
-            elif postproc_param[0] == "pyvista":
-                for mesh in postproc_param[1]['mesh']:
-                    print(mesh)
+
+            # Montre les résultats numériques et analytique par PyVista avec le maillage
+            elif param_name == 'pyvista':
+                for mesh in pp_params[param_name]['mesh']:
                     postprocessing.show_pyvista(mesh)
             else:
-                print(f'Demande de post traitement {postproc_param} invalide.')
+                print(f'Demande de post traitement {param_name} invalide.')
 
-    # Exécute la connectivité avec le maillage généré.
     def compute_mesh_and_connectivity(self, mesh_parameters):
         """
         Exécute la connectivité avec le maillage généré.
 
         Parameters
         ----------
-        None
+        mesh_parameters: Dict[str, str]
+        Dictionnaire des paramètres pour mesh à générer
 
         Returns
         -------
-        mesh_obj
+        mesh_obj: Mesh
+        Maillage de la simulation
 
         """
         mesher = MeshGenerator()
@@ -115,17 +185,18 @@ class Processing:
         return mesh_obj
 
     def execute_preprocessing(self, mesh_obj):
-
         """
         Effectue les calculs relatifs au maillage préalablement à l'utilisation du solver
 
         Parameters
         ----------
-        None
+        mesh_obj: Mesh
+        Maillage de la simulation
 
         Returns
         -------
-        (volumes, centroids)
+        (volumes, centroids): Tuple[numpy.ndarray, numpy.ndarray]
+        Arrays storant les volumes des éléments et la position du centroide
 
         """
         n_elem = mesh_obj.get_number_of_elements()  # Nombre d'éléments dans notre maillage

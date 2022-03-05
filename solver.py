@@ -18,13 +18,6 @@ Matricule: 2167132
 #               Collard-Daigneault Audrey, ZAYNI Mohamad Karim                #
 # ----------------------------------------------------------------------------#
 
-# %% NOTES D'UTILISATION
-"""
-
-Classe de solver VF Convection Diffusion
-
-"""
-
 # %% IMPORTATION DES LIBRAIRIES
 
 import numpy as np
@@ -33,10 +26,36 @@ from scipy.sparse.linalg.dsolve import linsolve
 import GradientLS as GLS
 import sys
 
-
 # %% Fonctions Internes
-# Calcule les distances et vecteurs nécessaires selon les coordonnées fournies
 def compute_lengths_and_unit_vectors(pta, ptb, ptA, ptP):
+    """
+    Calcule les distances et vecteurs unitaires nécessaires selon les coordonnées fournies
+
+    Parameters
+    ----------
+    pta: Tuple[numpy.float64, numpy.float64]
+    Coordonnée du noeud 1 de la face
+
+    ptb: Tuple[numpy.float64, numpy.float64]
+    Coordonnée du noeud 2 de la face
+
+    ptA: numpy.ndarray
+    Coordonnée du centroide de l'élément de droite
+
+    ptP: numpy.ndarray) -> Tuple[numpy.float64, numpy.float64, numpy.ndarray, numpy.ndarray, numpy.ndarray]
+    Coordonnée du centroide de l'élément de gauche
+
+    Returns
+    -------
+    (dA, dKSI, n, eKSI, eETA): Tuple[numpy.float64, numpy.float64, numpy.ndarray, numpy.ndarray, numpy.ndarray]
+    dA   -> Aire de la face
+    dKSI -> Distance entre les deux centroides
+    n    -> Vecteur normal de la face
+    eKSI -> Vecteur unitaire du centroide de gauche vers celui de droite
+    eETA -> Vecteur unitaire du noeud 1 vers 2
+
+    """
+
     (xa, ya), (xb, yb), (xA, yA), (xP, yP) = pta, ptb, ptA, ptP
 
     # Détermination des distances
@@ -51,8 +70,36 @@ def compute_lengths_and_unit_vectors(pta, ptb, ptA, ptP):
 
     return dA, dKSI, n, eKSI, eETA
 
-# Calcule le terme source dû au gradient de pression
 def compute_source(P, dpdx, dpdy, volumes, centroids):
+    """
+    Calcule le terme source dû au gradient de pression
+def compute_source(P: int, dpdx: function, dpdy: function, volumes: numpy.ndarray, centroids: numpy.ndarray) -> Tuple[numpy.ndarray, numpy.ndarray]:
+
+
+    Parameters
+    ----------
+    P: int
+    Paramètre propre au problème étudié
+
+    dpdx: function
+    Fonction évaluant le terme dp/dx avec x, y, et P
+
+    dpdy: function
+    Fonction évaluant le terme dp/dy avec x, y, et P
+
+    volumes: numpy.ndarray
+    Array storant les volumes des éléments
+
+    centroids: numpy.ndarray
+    Array storant les coordonnées des centroides des éléments
+
+    Returns
+    -------
+    (SGPXp, SGPYp): Tuple[numpy.ndarray, numpy.ndarray]
+    SGPXp -> Terme de source pour l'équation du momentum en x lié à la pression
+    SGPYp -> Terme de source pour l'équation du momentum en y lié à la pression
+
+    """
     SGPXp, SGPYp = np.zeros(len(volumes)), np.zeros(len(volumes))
 
     # Calcule les gradients de pression aux centroids des éléments * volume
@@ -62,33 +109,41 @@ def compute_source(P, dpdx, dpdy, volumes, centroids):
 
     return SGPXp, SGPYp
 
-
-
-# %% Classe MethodesVolumesFinisConvDiff
-# Solveur utilisant la méthode des volumes finis Convection-Diffusion
+# %% Classe
 class FVMMomentum:
     """
-    Méthode de volumes finis pour un problème de diffusion.
+    Méthode de volumes finis pour un problème de transfert de momentum en 2D
 
-    Parmeters
+    Parameters
     ---------
-    exemple: self.case
-        L'exemple en cours de traitement
-    
-    cross_diffusion: bool
-        pour activer ou désactiver la considération des termes Sdc
+    case: Case
+    Cas traité qui a les informations sur la physique du problème
+
+    mesh_obj: Mesh
+    Maillage de la simulation
+
+    bcdata: Tuple
+    Ensemble de donnée sur les conditions limites aux parois
+
+    preprocessing_data: Tuple[numpy.ndarray, numpy.ndarray]
+    Arrays storant les volumes des éléments et la position du centroide
 
     Attributes
     ----------
-    mesh_obj: mesh
-        Maillage du problème
-    
-    bcdata: liste de float et str.
-        Type + valeur des conditions aux limites imposées. 
-    
-        
-    time: dictionnaire str/float.
-        Temps de calcul correspondant à la méthode utilisé
+    case: Case
+    Cas traité qui a les informations sur la physique du problème
+
+    mesh_obj: Mesh
+    Maillage de la simulation
+
+    bcdata: Tuple
+    Ensemble de donnée sur les conditions limites aux parois
+
+    volumes: numpy.ndarray
+    Array storant les volumes des éléments
+
+    centroids: numpy.ndarray
+    Array storant les coordonnées des centroides des éléments
 
     """
 
@@ -100,6 +155,14 @@ class FVMMomentum:
         self.centroids = preprocessing_data[1]
 
     def set_analytical_function(self, analytical_function):
+        """
+        Ajoute une solution analytique au problème simulé lorsque disponible et/ou nécessaire
+
+        Parameters
+        ----------
+        analytical_function: Tuple[function, function]
+        Fonction analytique du problème (u(x,y) et v(x,y))
+        """
         self.analytical_function = analytical_function
 
     # Accesseurs
@@ -134,12 +197,22 @@ class FVMMomentum:
     # Solveur VF
     def solve(self, method="CENTRE", alpha=0.75):
         """
-        Solveur Volumes Finis 
-        
+        Effectue les calculs relatifs au maillage préalablement à l'utilisation du solver
+
+        Parameters
+        ----------
+        method: str = "CENTRE"
+        Méthode pour la simulation en convection (CENTRE ou UPWIND)
+
+        alpha: float = 0.75)
+        Facteur de relaxation
+
         Returns
         -------
-        Solutions
-        
+        (u, v), (PHI_EXu, PHI_EXv): Tuple[Tuple[numpy.ndarray, numpy.ndarray], Tuple[numpy.ndarray, numpy.ndarray]]
+        (u, v) -> Solution numérique en x et y
+        (PHI_EXu, PHI_EXv) -> Solution analytique en x et y
+
         """
         # Chercher les différentes variables
         mesh = self.get_mesh()          # Maillage utilisé
@@ -355,6 +428,5 @@ class FVMMomentum:
                 Bv0 = Bv
 
             it += 1
-
 
         return (u, v), (PHI_EXu, PHI_EXv)

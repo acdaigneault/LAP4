@@ -82,33 +82,53 @@ processing = Processing(case_classic, bcdata)
 processing.set_analytical_function((u, null))
 
 # Simulation avec P = 0, 1 et -3
-print("Simulation avec P = 0, 1 et -3")
+print("1. Simulation avec P = 0, 1 et -3")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    print("   En execution")
+    print("   • En execution")
     simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 0},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 1}]#,
-                              #{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': -3}]
-    postprocessing_parameters = [('pyvista', {'mesh': [0, 1, 2]}),
-                                ('plans', {'x': 0.5, 'y': 0.5})]
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 1},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': -3}]
+    postprocessing_parameters = {'plans': {'x': 0.5, 'y': 0.5},
+                                 'pyvista': {'mesh': [0, 1, 2]}}
 
     processing.set_simulations_and_postprocessing_parameters(simulations_parameters, postprocessing_parameters)
     processing.execute_simulations()
-    print("   Simulation terminée")
+    print("   • Simulation terminée")
 
-"""
-# Simulation pour la convergence de l'erreur avec P = 0
-print("Simulations pour la convergence de l'erreur")
+
+# Simulation pour la convergence de l'erreur
+print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
-P =   input("   Choix du paramètre P (entre -3 et 3):")
-if rep == "Y":
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': P},
-                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': P},
-                              {'mesh_type': 'QUAD', 'Nx': 30, 'Ny': 30, 'method': 'UPWIND', 'P': P}]
-    postprocessing_parameters = ['error']
+if rep == "Y" or rep == "y":
+    P = input("   Choix du paramètre P (entre -3 et 3): ")
+    print("   • En execution")
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P)},
+                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P)},
+                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'UPWIND', 'P': float(P)}]
+    postprocessing_parameters = {'error': 'NA',
+                                 'pyvista': {'mesh': [0, 1, 2]}}
 
     processing.set_simulations_and_postprocessing_parameters(simulations_parameters, postprocessing_parameters)
-    processing.execute_simulations()"""
+    processing.execute_simulations()
+    print("   • Simulation terminée")
+
+
+# Simulation pour la convergence de l'erreur
+print("3. Simulations pour la convergence de l'erreur en maillage 'TRI'")
+rep = input("   Exécuter? (Y ou N): ")
+if rep == "Y" or rep == "y":
+    P = input("   Choix du paramètre P (entre -3 et 3): ")
+    print("   • En execution")
+    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P)},
+                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P)},
+                              {'mesh_type': 'TRI', 'Nx': 40, 'Ny': 40, 'method': 'UPWIND', 'P': float(P)}]
+    postprocessing_parameters = {'error': 'NA',
+                                 'pyvista': {'mesh': [0, 1, 2]}}
+
+    processing.set_simulations_and_postprocessing_parameters(simulations_parameters, postprocessing_parameters)
+    processing.execute_simulations()
+    print("   • Simulation terminée")
 
 
 
