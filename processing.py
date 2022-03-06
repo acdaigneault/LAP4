@@ -182,7 +182,7 @@ class Processing:
 
         """
         mesher = MeshGenerator()
-        mesh_obj = mesher.rectangle(self.case.get_domain(), mesh_parameters)
+        mesh_obj = mesher.rectangle_points(self.case.get_domain(), mesh_parameters)
         conec = MeshConnectivity(mesh_obj, verbose=False)
         conec.compute_connectivity()
 

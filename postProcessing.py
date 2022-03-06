@@ -179,29 +179,35 @@ class PostProcessing:
         # Enregistrer
         plt.savefig(save_path, dpi=200)
 
-    def show_pyvista(self, i_mesh):
+    def show_pyvista(self, i_mesh, norm=True):
+
         # Préparation du maillage
         plotter = MeshPlotter()
         nodes, elements = plotter.prepare_data_for_pyvista(self.data[i_mesh]['mesh'])
         pv_mesh = pv.PolyData(nodes, elements)
 
-        # Solutions numériques et analytiques
-        pv_mesh['Vitesse u numérique'] = self.data[i_mesh]['u_num']
-        pv_mesh['Vitesse u analytique'] = self.data[i_mesh]['u_exact']
+        # Affiche la norme de la vitesse ou la vitesse en u
+        if norm is True:
+            # Solutions numériques et analytiques
+            pv_mesh['Vitesse numérique'] = self.data[i_mesh]['phi_num']
+            pv_mesh['Vitesse analytique'] = self.data[i_mesh]['phi_exact']
+        else:
+            pv_mesh['Vitesse numérique'] = self.data[i_mesh]['u_num']
+            pv_mesh['Vitesse analytique'] = self.data[i_mesh]['u_exact']
 
         # Création des graphiques
         pl = pv.Plotter(shape=(1, 2))  # Avant pvQt.BackgroundPlotter()
         pl.subplot(0, 0)
         pl.add_text(f"Solution numérique\n {self.data[i_mesh]['n']} éléments\n "
                     f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
-        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u numérique', cmap="RdBu")
+        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse numérique', cmap="RdBu")
         pl.camera_position = 'xy'
         pl.show_bounds()
 
         pl.subplot(0, 1)
         pl.add_text(f"Solution analytique\n {self.data[i_mesh]['n']} éléments\n "
                     f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
-        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse u analytique', cmap="RdBu")
+        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse analytique', cmap="RdBu")
         pl.camera_position = 'xy'
         pl.show_bounds()
 

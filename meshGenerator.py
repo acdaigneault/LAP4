@@ -184,6 +184,155 @@ class MeshGenerator:
 
         return mesh_obj
 
+
+    def rectangle_points(self, rectangle_corners, mesh_parameters):
+        """
+        Génère un maillage pour la géométrie du rectangle.
+
+                                tag=3
+        y_max   -----------------------------------------
+                |                                       |
+          tag=0 |                                       | tag=2
+                |                                       |
+        y_min   -----------------------------------------
+                                tag=1
+                x_min                                   x_max
+
+        Parameters
+        ----------
+        rectangle_corners : list|tuple|ndarray
+            Tableau contenant les coordonnées des coins du rectangle [(ptx1, py), x_max, y_min, y_max]
+        mesh_parameters : dict
+            Dictionnaire contenant les paramètres du maillage à générer. Les clés sont :
+            * 'mesh_type': string, optionnel
+                Type des éléments du maillage. Les valeurs possibles sont :
+                - 'TRI' : triangles (par défaut)
+                - 'QUAD' : quadrilatères
+                - 'MIX' : mix de triangles et de quadrilatères
+            * 'lc': double
+                taille caractéristique des éléments du maillage (uniquement pour les maillages non-structurés).
+            * 'Nx': integer ; 'Ny': integer
+                Nombre de cellules suivant les axes x et y (uniquement pour les maillages transfinis).
+
+            Il faut fournir le paramètre 'lc' pour obtenir des maillages non-structurés
+            et les paramètres 'Nx' et 'Ny' pour le cas des maillages transfinis.
+
+            Les maillages non-structurés de type "QUAD" peuvent parfois contenir des triangles.
+
+        Returns
+        -------
+        mesh : Mesh object
+            Objet mesh contenant les données du maillage généré.
+
+        """
+        # Initializing the Gmsh API
+        gmsh.initialize()
+        # Console output
+        gmsh.option.setNumber("General.Terminal", self.verbose)
+
+        # Gemetry
+        gmsh.model.add("Rectangle")  # Name
+        # # Points of the geometry
+        if 'lc' in mesh_parameters:
+            lc = mesh_parameters['lc']
+        else:
+            lc = 0.0
+        #       Pt2 ----------- Pt1
+        #       |     Edge 1     |
+        # Edge2 |                | Edge4
+        #       |     Edge 3     |
+        #       Pt3 ----------- Pt4
+        gmsh.model.geo.addPoint(rectangle_corners[2][0], rectangle_corners[2][1], 0.0, lc, 1)  # Pt1
+        gmsh.model.geo.addPoint(rectangle_corners[3][0], rectangle_corners[3][1], 0.0, lc, 2)  # Pt2
+        gmsh.model.geo.addPoint(rectangle_corners[0][0], rectangle_corners[0][1], 0.0, lc, 3)  # Pt3
+        gmsh.model.geo.addPoint(rectangle_corners[1][0], rectangle_corners[1][1], 0.0, lc, 4)  # Pt4
+        # # Edges of the geometry
+        gmsh.model.geo.addLine(1, 2, 1)  # Edge 1 : Pt1 <-> Pt2
+        gmsh.model.geo.addLine(2, 3, 2)  # Edge 2 : Pt2 <-> Pt3
+        gmsh.model.geo.addLine(3, 4, 3)  # Edge 3 : Pt3 <-> Pt4
+        gmsh.model.geo.addLine(4, 1, 4)  # Edge 4 : Pt4 <-> Pt1
+        boundary_tags = [[2], [3], [4], [1]]
+        # # Surface zone and Physicals Group
+        gmsh.model.geo.addCurveLoop([1, 2, 3, 4], 1)
+        gmsh.model.geo.addPlaneSurface([1], 1)
+        gmsh.model.addPhysicalGroup(2, [1], 1)
+        gmsh.model.setPhysicalName(2, 1, "DOMAINE")
+
+        # Mesh
+        if 'lc' not in mesh_parameters:
+            nx = mesh_parameters['Nx']+1
+            ny = mesh_parameters['Ny']+1
+            gmsh.model.geo.mesh.setTransfiniteCurve(1, nx)
+            gmsh.model.geo.mesh.setTransfiniteCurve(2, ny)
+            gmsh.model.geo.mesh.setTransfiniteCurve(3, nx)
+            gmsh.model.geo.mesh.setTransfiniteCurve(4, ny)
+            gmsh.model.geo.mesh.setTransfiniteSurface(1, "Alternate")
+        if mesh_parameters['mesh_type'] == "QUAD":
+            gmsh.model.geo.mesh.setRecombine(2, 1)
+            # gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)
+        elif mesh_parameters['mesh_type'] == "MIX":
+            x_mid = 0.5*(rectangle_corners[0]+rectangle_corners[1])
+            gmsh.model.geo.remove([(2, 1), (1, 1), (1, 3)])
+            #       Pt2 ----- Pt5 ------ Pt1
+            #       |    E3   |    E1    |
+            #    E2 |         | E7       | E4
+            #       |    E5   |    E6    |
+            #       Pt3 ----- Pt6 ------ Pt4
+            gmsh.model.geo.addPoint(x_mid, rectangle_corners[3], 0.0, lc, 5)  # Pt5
+            gmsh.model.geo.addPoint(x_mid, rectangle_corners[2], 0.0, lc, 6)  # Pt6
+            gmsh.model.geo.addLine(1, 5, 1)  # Edge 1 : Pt1 <-> Pt5
+            gmsh.model.geo.addLine(5, 2, 3)  # Edge 3 : Pt5 <-> Pt2
+            gmsh.model.geo.addLine(3, 6, 5)  # Edge 5 : Pt3 <-> Pt6
+            gmsh.model.geo.addLine(6, 4, 6)  # Edge 6 : Pt6 <-> Pt4
+            gmsh.model.geo.addLine(5, 6, 7)  # Edge 7 : Pt5 <-> Pt6
+            gmsh.model.geo.addCurveLoop([1, 7, 6, 4], 2)
+            gmsh.model.geo.addCurveLoop([3, 2, 5, -7], 3)
+            gmsh.model.geo.addPlaneSurface([2], 2)
+            gmsh.model.geo.addPlaneSurface([3], 3)
+            gmsh.model.addPhysicalGroup(2, [2, 3], 2)
+            gmsh.model.setPhysicalName(2, 2, "DOMAINE")
+            if 'lc' not in mesh_parameters:
+                nx = mesh_parameters['Nx']//2+1
+                ny = mesh_parameters['Ny']+1
+                gmsh.model.geo.mesh.setTransfiniteCurve(1, nx)
+                gmsh.model.geo.mesh.setTransfiniteCurve(2, ny)
+                gmsh.model.geo.mesh.setTransfiniteCurve(3, nx)
+                gmsh.model.geo.mesh.setTransfiniteCurve(4, ny)
+                gmsh.model.geo.mesh.setTransfiniteCurve(5, nx)
+                gmsh.model.geo.mesh.setTransfiniteCurve(6, nx)
+                gmsh.model.geo.mesh.setTransfiniteCurve(7, ny)
+                gmsh.model.geo.mesh.setTransfiniteSurface(2, "Alternate")
+                gmsh.model.geo.mesh.setTransfiniteSurface(3)
+            gmsh.model.geo.mesh.setRecombine(2, 3)
+            boundary_tags = [[2], [5, 6], [4], [1, 3]]
+        gmsh.option.setNumber("Mesh.Smoothing", 100)
+        # # Generation of the mesh
+        gmsh.model.geo.synchronize()
+        gmsh.model.mesh.generate(2)
+        # gmsh.write("Rectangle.su2")  # write the mesh in a file
+        # gmsh.fltk.run()  # display the mesh
+        # # Getting the nodes coordinates
+        _, node_coords, _ = gmsh.model.mesh.getNodes()
+        # Getting the connectivity of the elements
+        elem_types_domaine, _, elem_node_tags_domaine = gmsh.model.mesh.getElements(dim=2)
+        # Getting the boundary elements
+        elem_boundary = []
+        for b_tags in boundary_tags:
+            elem_bound = []
+            for b_tag in b_tags:
+                _, _, elem_node_tags = gmsh.model.mesh.getElements(dim=1, tag=b_tag)
+                elem_bound.append(elem_node_tags[0])
+            elem_bound = np.concatenate(elem_bound, dtype=int)
+            elem_boundary.append(elem_bound)
+
+        # Finalizing the Gmsh API
+        gmsh.finalize()
+
+        # Construction of the Mesh Object
+        mesh_obj = self.generate_mesh_object(node_coords, elem_types_domaine, elem_node_tags_domaine, elem_boundary)
+
+        return mesh_obj
+
     def back_step(self, H1, H2, L1, L2, mesh_parameters):
         """
         Génère un maillage pour la géométrie d'une marche descendante. 
