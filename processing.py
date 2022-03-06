@@ -25,6 +25,8 @@ from meshGenerator import MeshGenerator
 from solver import FVMMomentum
 from postProcessing import PostProcessing
 
+import gradientLS as GLS
+
 # %% CLASSE
 class Processing:
     """
@@ -58,6 +60,8 @@ class Processing:
         self.bcdata = bcdata
         self.simulations_parameters = None
         self.postprocessing_parameters = None
+
+        self.test = True
 
     def set_analytical_function(self, analytical_function) -> None:
         """
@@ -113,7 +117,7 @@ class Processing:
             solver = FVMMomentum(self.case, mesh_obj, self.bcdata, preprocessing_data)
             solver.set_analytical_function(self.analytical_function)
             solver.set_P(sim_param['P'])
-            solutions = solver.solve(sim_param['method'])
+            solutions = solver.solve(sim_param['method'], sim_param['alpha'])
 
             # Store les résultats de la simulation et des infos pertinentes pour le post-traitement
             postprocessing.set_data(mesh_obj, solutions, preprocessing_data, sim_param)

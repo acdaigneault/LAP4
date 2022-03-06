@@ -23,7 +23,7 @@ Matricule: 2167132
 import numpy as np
 import scipy.sparse as sps
 from scipy.sparse.linalg.dsolve import linsolve
-import GradientLS as GLS
+import gradientLS as GLS
 import sys
 
 # %% Fonctions Internes
@@ -246,14 +246,9 @@ class FVMMomentum:
 
 
         # GLS (on peut modifier ce solver pour momentum!! donc pour 2 variables)
-        bcdata_x = ([bcdata[0][0], bcdata[0][1][0]], [bcdata[1][0], bcdata[1][1][0]],
-                    [bcdata[2][0], bcdata[2][1][0]], [bcdata[3][0], bcdata[3][1][0]])
-        solver_moindrescarresu = GLS.GradientMoindresCarres(case, mesh, bcdata_x, (volumes, centroids))
-        bcdata_y = ([bcdata[0][0], bcdata[0][1][1]], [bcdata[1][0], bcdata[1][1][1]],
-                    [bcdata[2][0], bcdata[2][1][1]], [bcdata[3][0], bcdata[3][1][1]])
-        solver_moindrescarresv = GLS.GradientMoindresCarres(case, mesh, bcdata_y, (volumes, centroids))
-        solver_moindrescarresu.set_P(P)
-        solver_moindrescarresv.set_P(P)
+
+        solver_GLS = GLS.GradientLeastSquares(mesh, bcdata, centroids)
+        solver_GLS.set_P(P)
 
         # Calcule les termes sources reliés au gradient de pression
         SGPXp, SGPYp = compute_source(P, dpdx, dpdy, volumes, centroids)
@@ -265,8 +260,7 @@ class FVMMomentum:
         it = 0
         while convergence is False:
             # Boucle pour le cross-diffusion
-            """J'ai mis 1 car on est en quad structuré alors pas besoin de cross diff pour tester"""
-            for i in range(1):
+            for i in range(2):
 
                 # Parcours les faces internes et remplis la matrice A et le vecteur B
                 for i_face in range(mesh.get_number_of_boundary_faces(), mesh.get_number_of_faces()):
@@ -403,10 +397,7 @@ class FVMMomentum:
                 PHIv = linsolve.spsolve(sps.csr_matrix(Av, dtype=np.float64), Bv)
 
                 # Calcule des gradients pour le cross-diffusion
-                solver_moindrescarresu.set_phi(PHIu)
-                solver_moindrescarresv.set_phi(PHIv)
-                GRADu = solver_moindrescarresu.solve()
-                GRADv = solver_moindrescarresv.solve()
+                GRADu, GRADv = solver_GLS.solve(PHIu, PHIv)
 
             # Vérification des normes de résidu pour l'itération précédante
             Ru = np.linalg.norm(np.dot(Au, u) - Bu0)
@@ -414,7 +405,7 @@ class FVMMomentum:
 
             """TOLERANCE DOIT ÊTRE DE 1E-6 AU MOINS"""
             #print(Ru, Rv)
-            tol = 1e-6
+            tol = 1e-2
             if it != 0 and Ru < tol and Rv < tol:
                 # Solution de l'itération précédence est bonne
                 convergence = True
