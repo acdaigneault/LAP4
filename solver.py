@@ -225,15 +225,7 @@ class FVMMomentum:
         # Initialisation des matrices et des vecteurs pour u et v
         NELEM = self.mesh_obj.get_number_of_elements()
 
-        # Matrices/vecteurs pour l'itération i
-        Au = np.zeros((NELEM, NELEM))
-        Bu, Bv = np.zeros(NELEM), np.zeros(NELEM)
-        PHIu, PHIv = np.zeros(NELEM), np.zeros(NELEM)
-        PHI_EXu, PHI_EXv = np.zeros(NELEM), np.zeros(NELEM)
-        GRADu, GRADv = np.zeros((NELEM, 2)), np.zeros((NELEM, 2))
-
         # Matrice/vecteurs pour l'itération i+1
-        Ru, Rv = np.zeros(NELEM), np.zeros(NELEM)
         Bu0, Bv0 = np.zeros(NELEM), np.zeros(NELEM)
 
         # Test de convergence respecté
@@ -244,8 +236,6 @@ class FVMMomentum:
         dpdx, dpdy = case.get_sources()
         analytical_function = self.get_analytical_function()
 
-
-        # GLS (on peut modifier ce solver pour momentum!! donc pour 2 variables)
 
         solver_GLS = GLS.GradientLeastSquares(mesh, bcdata, centroids)
         solver_GLS.set_P(P)
@@ -259,6 +249,13 @@ class FVMMomentum:
         # Boucle pour l'algorithme principal de résolution non-linéaire
         it = 0
         while convergence is False:
+            # Matrices/vecteurs pour l'itération i
+            Au = np.zeros((NELEM, NELEM))
+            Bu, Bv = np.zeros(NELEM), np.zeros(NELEM)
+            PHIu, PHIv = np.zeros(NELEM), np.zeros(NELEM)
+            PHI_EXu, PHI_EXv = np.zeros(NELEM), np.zeros(NELEM)
+            GRADu, GRADv = np.zeros((NELEM, 2)), np.zeros((NELEM, 2))
+
             # Boucle pour le cross-diffusion
             for i in range(2):
 
@@ -403,9 +400,7 @@ class FVMMomentum:
             Ru = np.linalg.norm(np.dot(Au, u) - Bu0)
             Rv = np.linalg.norm(np.dot(Av, v) - Bv0)
 
-            """TOLERANCE DOIT ÊTRE DE 1E-6 AU MOINS"""
-            #print(Ru, Rv)
-            tol = 1e-2
+            tol = 1e-6
             if it != 0 and Ru < tol and Rv < tol:
                 # Solution de l'itération précédence est bonne
                 convergence = True

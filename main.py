@@ -89,12 +89,12 @@ processing.set_analytical_function((u, null))
 print("1. Simulation avec P = 0, 1 et -3")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 0, 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 1, 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': -3, 'alpha': 0.75}]
-    #simulations_parameters = [{'mesh_type': 'QUAD', 'lc': 0.2, 'method': 'UPWIND', 'P': 0, 'alpha': 0.75},
-    #                          {'mesh_type': 'QUAD', 'lc': 0.2, 'Ny': 25, 'method': 'UPWIND', 'P': 1, 'alpha': 0.75},
-    #                          {'mesh_type': 'QUAD', 'lc': 0.2,'Ny': 25, 'method': 'UPWIND', 'P': -3, 'alpha': 0.75}]
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3, 'alpha': 0.75}]
+    #simulations_parameters = [{'mesh_type': 'QUAD', 'lc': 0.2, 'method': 'CENTRE', 'P': 0, 'alpha': 0.75},
+    #                          {'mesh_type': 'QUAD', 'lc': 0.2, 'Ny': 25, 'method': 'CENTRE', 'P': 1, 'alpha': 0.75},
+    #                          {'mesh_type': 'QUAD', 'lc': 0.2,'Ny': 25, 'method': 'CENTRE', 'P': -3, 'alpha': 0.75}]
     postprocessing_parameters = {'plans': {'x': 0.5, 'y': 0.5},
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters)
@@ -105,9 +105,9 @@ print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
     P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75}]
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters)
@@ -119,9 +119,9 @@ print("3. Simulations pour la convergence de l'erreur en maillage 'TRI'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
     P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.9},
-                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.9},
-                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.9}]
+    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.9},
+                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.9},
+                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.9}]
     postprocessing_parameters = {'error': 'NA',
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters)
@@ -147,11 +147,11 @@ def dpdy(x, y, P):
 # Vitesse et solution analytique
 couette_flow = U*(y/b) + 1/(2*mu)*dpdx(x, y, P)*y*(y-b)
 f_u = sp.lambdify([x, y, P], couette_flow, "numpy")
-f_exact = sp.lambdify([x, y, P], couette_flow, "numpy")
 
 def u(x, y, P):
     x_turned, y_turned = np.linalg.solve(rotate, np.array([x, y]))
     return f_u(x_turned, y_turned, P)
+
 def v(x, y, P):
     return 0
 
@@ -182,9 +182,9 @@ processing.set_analytical_function((u, null))
 print("1. Simulation avec P = 0, 1 et -3")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 0, 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 1, 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': -3, 'alpha': 0.75}]
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3, 'alpha': 0.75}]
     postprocessing_parameters = {'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters)
 
@@ -194,9 +194,9 @@ print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
     P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75}]
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters)
@@ -207,9 +207,9 @@ print("3. Simulations pour la convergence de l'erreur en maillage 'TRI'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
     P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.9},
-                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.9},
-                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.9}]
+    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.9},
+                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.9},
+                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.9}]
     postprocessing_parameters = {'error': 'NA',
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters)
