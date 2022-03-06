@@ -400,6 +400,7 @@ class FVMMomentum:
             Ru = np.linalg.norm(np.dot(Au, u) - Bu0)
             Rv = np.linalg.norm(np.dot(Av, v) - Bv0)
 
+            print(f"Itération {it} : |Ru|={Ru:.6f}.  |Rv|={Rv:.6f}")
             tol = 1e-6
             if it != 0 and Ru < tol and Rv < tol:
                 # Solution de l'itération précédence est bonne

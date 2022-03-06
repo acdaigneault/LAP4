@@ -93,19 +93,20 @@ class Processing:
         self.simulations_parameters = simulations_parameters
         self.postprocessing_parameters = postprocessing_parameters
 
-    def execute_simulations(self):
+    def execute_simulations(self, sim_name):
         """
         Exécute les simulations demandées
 
         Parameters
         ----------
-        None
+        sim_name: str
+        Titre de la simulation effectuée
 
         Returns
         -------
         None
         """
-        postprocessing = PostProcessing()
+        postprocessing = PostProcessing(sim_name)
 
         # Excécute plusieurs simulations selon l'ensemble de parametres de simulation
         for sim_param in self.simulations_parameters:
@@ -146,13 +147,14 @@ class Processing:
 
             # Affiche les solutions avec la fonction tricontourf() de matplotlib
             if param_name == 'solutions':
-                postprocessing.show_solutions(i_mesh=-1, title='Solution numérique et MMS',
-                                              save_path='images/solutions.png')
+                for mesh in pp_params[param_name]['mesh']:
+                    postprocessing.show_solutions(i_mesh=mesh, title='Solution numérique et MMS',
+                                                  save_path='solutions.png')
 
             # Affiche la solution selon un plan en x et un en y
             elif param_name == 'plans':
                 postprocessing.show_plan_solutions(i_mesh=-1, title='Solutions selon des coupes',
-                                                   save_path='images/plans', X_Coupe=pp_params[param_name]['x'],
+                                                   save_path='plans', X_Coupe=pp_params[param_name]['x'],
                                                    Y_Coupe=pp_params[param_name]['y'])
 
             # Calcule l'ordre de convergence et montre l'erreur L2 selon la longueur caractéristique l2

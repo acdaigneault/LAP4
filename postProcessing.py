@@ -40,7 +40,8 @@ class PostProcessing:
         Dictionnaire qui comporte toutes les données de nécessaire
         pour effectuer le post-traitement.
     """
-    def __init__(self):
+    def __init__(self,  sim_name):
+        self.sim_name = sim_name
         self.data = []          # Initialisation du dictionnaire de données
 
     # Ajoute les données selon un nombre d'éléments'
@@ -95,7 +96,7 @@ class PostProcessing:
         -------
         None
         """
-        Figure1, (NUM, EX) = plt.subplots(1, 2, figsize=(20, 8))
+        Figure1, (NUM, EX) = plt.subplots(1, 2, figsize=(20, 6))
 
         Figure1.suptitle(f"{title} avec {self.data[i_mesh]['n']} éléments pour P = {self.data[i_mesh]['P']} utilisant une méthode {self.data[i_mesh]['method']}")
 
@@ -108,6 +109,9 @@ class PostProcessing:
                             self.data[i_mesh]['position'][:, 1],
                             self.data[i_mesh]['u_num'], levels=levels)
         plt.colorbar(c, ax=NUM)
+        NUM.tricontour(self.data[i_mesh]['position'][:, 0],
+                            self.data[i_mesh]['position'][:, 1],
+                            self.data[i_mesh]['u_num'], levels=levels, colors='k')
         NUM.set_xlabel("L (m)")
         NUM.set_ylabel("H (m)")
         NUM.set_title("Solution numérique")
@@ -117,6 +121,9 @@ class PostProcessing:
                            self.data[i_mesh]['position'][:, 1],
                            self.data[i_mesh]['u_exact'], levels=levels)
         plt.colorbar(c, ax=EX)
+        EX.tricontour(self.data[i_mesh]['position'][:, 0],
+                           self.data[i_mesh]['position'][:, 1],
+                           self.data[i_mesh]['u_exact'], levels=levels, colors='k')
         EX.set_xlabel("L (m)")
         EX.set_ylabel("H (m)")
         EX.set_title("Solution analytique MMS/analytique")
@@ -180,39 +187,47 @@ class PostProcessing:
         plt.savefig(save_path, dpi=200)
 
     def show_pyvista(self, i_mesh, norm=True):
+        pv.set_plot_theme("document")
 
         # Préparation du maillage
         plotter = MeshPlotter()
         nodes, elements = plotter.prepare_data_for_pyvista(self.data[i_mesh]['mesh'])
-        pv_mesh = pv.PolyData(nodes, elements)
+        pv_mesh_num = pv.PolyData(nodes, elements)
+        pv_mesh_ex = pv.PolyData(nodes, elements)
 
         # Affiche la norme de la vitesse ou la vitesse en u
         if norm is True:
             # Solutions numériques et analytiques
-            pv_mesh['Vitesse numérique'] = self.data[i_mesh]['phi_num']
-            pv_mesh['Vitesse analytique'] = self.data[i_mesh]['phi_exact']
+            pv_mesh_num['Vitesse numérique'] = self.data[i_mesh]['phi_num']
+            pv_mesh_ex['Vitesse analytique'] = self.data[i_mesh]['phi_exact']
+            levels = [np.min(np.append(self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact'])),
+                      np.max(np.append(self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact']))]
         else:
-            pv_mesh['Vitesse numérique'] = self.data[i_mesh]['u_num']
-            pv_mesh['Vitesse analytique'] = self.data[i_mesh]['u_exact']
+            pv_mesh_num['Vitesse numérique'] = self.data[i_mesh]['u_num']
+            pv_mesh_ex['Vitesse analytique'] = self.data[i_mesh]['u_exact']
+            levels = [np.min(np.append(self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact'])),
+                      np.max(np.append(self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']))]
 
         # Création des graphiques
         pl = pv.Plotter(shape=(1, 2))  # Avant pvQt.BackgroundPlotter()
-        pl.subplot(0, 0)
+        #pl.subplot(0, 0)
         pl.add_text(f"Solution numérique\n {self.data[i_mesh]['n']} éléments\n "
                     f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
-        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse numérique', cmap="RdBu")
+        pl.add_mesh(pv_mesh_num, show_edges=True, scalars='Vitesse numérique', cmap="jet", clim=levels)
         pl.camera_position = 'xy'
         pl.show_bounds()
 
         pl.subplot(0, 1)
         pl.add_text(f"Solution analytique\n {self.data[i_mesh]['n']} éléments\n "
                     f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
-        pl.add_mesh(pv_mesh, show_edges=True, scalars='Vitesse analytique', cmap="RdBu")
+        pl.add_mesh(pv_mesh_ex, show_edges=True, scalars='Vitesse analytique', cmap="jet", clim=levels)
         pl.camera_position = 'xy'
         pl.show_bounds()
 
         pl.link_views()
-        pl.show()
+        save_path = f"{self.sim_name}_mesh{i_mesh}_pyvista.png"
+        pl.show(screenshot=save_path)
+        pl.clear()
 
     def show_mesh_differences(self, i_mesh1, i_mesh2, title, save_path, diff=False):
         """
