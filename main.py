@@ -42,6 +42,16 @@ def execute(processing, simulations_parameters, postprocessing_parameters, sim_n
     processing.execute_simulations(sim_name)
     print("   • Simulation terminée")
 
+def ask_P():
+    P = input("   Choix du paramètre P (entre -3 et 3): ")
+    while float(P) < -3. or float(P) > 3.:
+        print("   Erreur")
+        P = input("   Choix du paramètre P (entre -3 et 3): ")
+
+    return float(P)
+
+
+
 
 #%% ------------------------------------  Cas écoulement de Couette classique ------------------------------------ %%#
 print(" -------- Cas d'écoulement de Couette classique --------")
@@ -92,23 +102,24 @@ if rep == "Y" or rep == "y":
     simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0, 'alpha': 0.75},
                               {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1, 'alpha': 0.75},
                               {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3, 'alpha': 0.75}]
-    postprocessing_parameters = {'plans': {'x': 0.5, 'y': 0.5},
-                                 'pyvista': {'mesh': [0, 1, 2]}}
-    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="classic_P")
+    postprocessing_parameters = {'plans': {'simulation': [2], 'x': 0.5, 'y': 0.5},
+                                 'pyvista': {'simulation': [0, 1, 2]}}
+    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="couetteclassic_paramP")
 
 
 # Simulation pour la convergence de l'erreur
 print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
+    P = ask_P()
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': P, 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
-                                 'solutions':  {'mesh': [0, 1, 2]},
-                                 'pyvista': {'mesh': [0, 1, 2]}}
-    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="classic_conv_quad")
+                                 'solutions':  {'simulation': [0, 1, 2]},
+                                 'pyvista': {'simulation': [0, 1, 2]}}
+    execute(processing, simulations_parameters, postprocessing_parameters,
+            sim_name="couetteclassic_convergence_quad")
 
 
 
@@ -116,20 +127,22 @@ if rep == "Y" or rep == "y":
 print("3. Simulations pour la convergence de l'erreur en maillage 'TRI'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
+    P = ask_P()
+    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': P, 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
-                                 'pyvista': {'mesh': [0, 1, 2]}}
-    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="classic_conv_tri")
+                                 'solutions': {'simulation': [0, 1, 2]},
+                                 'pyvista': {'simulation': [0, 1, 2]}}
+    execute(processing, simulations_parameters, postprocessing_parameters,
+            sim_name="couetteclassic_convergence_tri")
 
 
 
 #%% --------------------------------------  Cas écoulement de Couette tourné -------------------------------------- %%#
 print(" -------- Cas d'écoulement de Couette tourné --------")
 # Angle de rotation et matrice de rotation
-theta = 0
+theta = np.pi/8
 rotate = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
 
 # Terme source de pression, champ de vitesse & solution analytique
@@ -183,38 +196,38 @@ if rep == "Y" or rep == "y":
     simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0, 'alpha': 0.75},
                               {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1, 'alpha': 0.75},
                               {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3, 'alpha': 0.75}]
-    postprocessing_parameters = {'pyvista': {'mesh': [0, 1, 2]}}
-    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="tourne_P")
+    postprocessing_parameters = {'pyvista': {'simulation': [0, 1, 2]}}
+    execute(processing, simulations_parameters, postprocessing_parameters,
+            sim_name="couettetourne_paramP")
 
 
 # Simulation pour la convergence de l'erreur
 print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 30, 'Ny': 30, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
+    P = ask_P()
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 30, 'Ny': 30, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': P, 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
-                                 'solutions': {'mesh': [0, 1, 2]},
-                                 'pyvista': {'mesh': [0, 1, 2]}}
-    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="tourne_conv_quad")
+                                 'solutions': {'simulation': [0, 1, 2]},
+                                 'pyvista': {'simulation': [0, 1, 2]}}
+    execute(processing, simulations_parameters, postprocessing_parameters,
+            sim_name="couettetourne_convergence_quad")
 
 
 # Simulation pour la convergence de l'erreur
 print("3. Simulations pour la convergence de l'erreur en maillage 'TRI'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
+    P = ask_P()
+    simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 5, 'Ny': 5, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': P, 'alpha': 0.75},
+                              {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': P, 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
-                                 'solutions': {'mesh': [0, 1, 2]},
-                                 'pyvista': {'mesh': [0, 1, 2]}}
-    execute(processing, simulations_parameters, postprocessing_parameters, sim_name="tourne_conv_tri")
+                                 'solutions': {'simulation': [0, 1, 2]},
+                                 'pyvista': {'simulation': [0, 1, 2]}}
+    execute(processing, simulations_parameters, postprocessing_parameters,
+            sim_name="couettetourne_convergence_tri")
 
-
-
-plt.show()
 

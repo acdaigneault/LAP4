@@ -1,18 +1,35 @@
 """
-Date :    8 février 2022
-Auteurs : Audrey Collard-Daigneault (1920374) & Mohamad Karim Zayni (2167132)
-Utilité : Effectuer le post-traitement des données
+MEC6616 Aérodynamique Numérique
+
+
+@author: Audrey Collard-Daigneault
+Matricule: 1920374
+
+
+@author: Mohamad Karim ZAYNI
+Matricule: 2167132
+
+
 """
+
+
+#----------------------------------------------------------------------------#
+#                                 MEC6616                                    #
+#                        LAP4 Équations du momentum                          #
+#               Collard-Daigneault Audrey, ZAYNI Mohamad Karim               #
+#----------------------------------------------------------------------------#
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
+from matplotlib import cm
 import pyvista as pv
 import pyvistaqt as pvQt
 from meshGenerator import MeshGenerator
 from meshPlotter import MeshPlotter
 
 
+#%% Fonction interne
 def Coupe_X(Coordonnees, X, Solution, Analytique, Plan):
     Elements_ds_coupe = []
     Solution_coupe = []
@@ -27,31 +44,49 @@ def Coupe_X(Coordonnees, X, Solution, Analytique, Plan):
     Solution_coupe = np.array(Solution_coupe)
     return Elements_ds_coupe, Solution_coupe, Analytique_coupe
 
+#%% Classe
 class PostProcessing:
     """
-    Effectuer le post_traitement après la résolution du problème.
+    Effectuer le post_traitement après la résolution du problème selon une ou plusieurs simulations
     Parmeters
     ---------
-    exempmle: case
-        L'exemple en cours de traitement
+    sim_name: str
+    Nom d'un groupe de simulation
+
     Attributes
     ----------
-    data: dictionniare
-        Dictionnaire qui comporte toutes les données de nécessaire
-        pour effectuer le post-traitement.
+    sim_name: str
+    Nom d'un groupe de simulation
+
+    data: Dict
+    Dictionnaire qui comporte toutes les données de nécessaire pour effectuer le post-traitement.
+
     """
     def __init__(self,  sim_name):
         self.sim_name = sim_name
-        self.data = []          # Initialisation du dictionnaire de données
+        self.data = []  # Initialisation du dictionnaire de données
 
-    # Ajoute les données selon un nombre d'éléments'
+    def get_sim_name(self):
+        return self.sim_name
+
     def set_data(self, mesh, solutions, preprocessing_data, simulation_paramaters):
         """
-        Modifier les données de l'exemple traité.
+        Ajouter des données après une simulation à un ensemble de simulation à étudier
+
         Parameters
         ----------
-        case: case
-            Exemple Traité.
+        mesh: mesh.Mesh
+        Maillage de la simulation
+
+        solutions: Tuple[Tuple[numpy.ndarray, numpy.ndarray], Tuple[numpy.ndarray, numpy.ndarray]]
+        Solutions numérique (u, v) et solutions analytiques (u_exact, v_exact)
+
+        preprocessing_data: Tuple[numpy.ndarray, numpy.ndarray],
+        Arrays contenant les données de preprocessing (volumes et position du centroide des éléments)
+
+        simulation_paramaters: Dict[str, str]
+        Paramètres de simulation pour permettre leur affichage dans les titres ou les noms de sauvegarde
+
         Returns
         -------
         None
@@ -63,6 +98,17 @@ class PostProcessing:
             phi_num[i] = np.sqrt(solutions[0][0][i]**2 + solutions[0][1][i]**2)
             phi_ex[i] = np.sqrt(solutions[1][0][i]**2 + solutions[1][1][i]**2)
 
+        # Stockage de données de la simulation
+        # n: int                        -> Nombre d'éléments dans le maillage
+        # mesh: Mesh                    -> maillage (utilise pour PyVista)
+        # u_num, v_num: np.ndarray      -> Solutions numériques pour les 2 directions
+        # u_exact, v_exact: np.ndarray  -> Solutions analytiques pour les 2 directions
+        # phi_num: np.ndarray           -> Norme de la solution numérique
+        # phi_exact: np.ndarray         -> Norme de la solution analytique
+        # area: np.ndarray              -> Volume des éléments
+        # position: np.ndarray          -> Position du centroides des éléments
+        # P: float                      -> Valeur du paramètre P
+        # method: str                   -> Méthode utilisée (correction pour la convection) CENTRE ou UPWIND
         self.data.append({'n': mesh.get_number_of_elements(),
                           'mesh': mesh,
                           'u_num': solutions[0][0], 'u_exact': solutions[1][0],
@@ -75,168 +121,165 @@ class PostProcessing:
                           'method': simulation_paramaters['method']})
 
 
-
-
-    # Génère les graphiques des solutions numérique et analytique
-    def show_solutions(self, i_mesh, title, save_path):
+    def show_solutions(self, i_sim):
         """
-        Affichage des graphiques qui montrent la différence entre la solution
-        numérique et la solution analytique
+        Affichage des graphiques qui montrent la différence entre la solution numérique et la solution analytique
+        à l'aide de fonctions tricontour dans matplotlib
+
         Parameters
         ----------
-        i_mesh: int
-            Maillage de l'exemple traité.
+        i_sim: int
+        Numéro de la simulation sélectionnée pour le post-processing de solution
 
-        title: str
-            Nom du document pour le sauvegarder
-
-        save_path: str
-            Nom du fichier de sauvegarde
         Returns
         -------
         None
         """
-        Figure1, (NUM, EX) = plt.subplots(1, 2, figsize=(20, 6))
 
-        Figure1.suptitle(f"{title} avec {self.data[i_mesh]['n']} éléments pour P = {self.data[i_mesh]['P']} utilisant une méthode {self.data[i_mesh]['method']}")
+        figure, (num, ex) = plt.subplots(1, 2, figsize=(20, 6))
+        cmap = cm.get_cmap('jet')
 
-        # Set levels of color for the colorbar
-        levels = np.linspace(np.min([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]),
-                             np.max([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]), num=20)
+        # Titre de la figure
+        sim_name = self.get_sim_name()
+        title = f'Solution avec contours de la simulation "{sim_name}" de la vitesse u avec {self.data[i_sim]["n"]} ' \
+                f'éléments pour P = {self.data[i_sim]["P"]} utilisant une méthode {self.data[i_sim]["method"]}'
+        figure.suptitle(title)
+
+        # Mise à l'échelle de la colorbar pour les 2 graphiques
+        levels = np.linspace(np.min([self.data[i_sim]['u_num'], self.data[i_sim]['u_exact']]),
+                             np.max([self.data[i_sim]['u_num'], self.data[i_sim]['u_exact']]), num=20)
 
         # Solution numérique
-        c = NUM.tricontourf(self.data[i_mesh]['position'][:, 0],
-                            self.data[i_mesh]['position'][:, 1],
-                            self.data[i_mesh]['u_num'], levels=levels)
-        plt.colorbar(c, ax=NUM)
-        NUM.tricontour(self.data[i_mesh]['position'][:, 0],
-                            self.data[i_mesh]['position'][:, 1],
-                            self.data[i_mesh]['u_num'], levels=levels, colors='k')
-        NUM.set_xlabel("L (m)")
-        NUM.set_ylabel("H (m)")
-        NUM.set_title("Solution numérique")
+        c = num.tricontourf(self.data[i_sim]['position'][:, 0],
+                            self.data[i_sim]['position'][:, 1],
+                            self.data[i_sim]['u_num'], levels=levels, cmap=cmap)
+        plt.colorbar(c, ax=num)
+        num.tricontour(self.data[i_sim]['position'][:, 0],
+                       self.data[i_sim]['position'][:, 1],
+                       self.data[i_sim]['u_num'], '--', levels=levels, colors='k')
+        num.set_xlabel("L (m)")
+        num.set_ylabel("b (m)")
+        num.set_title("Solution numérique")
 
-        # Solution analytique/MMS
-        c = EX.tricontourf(self.data[i_mesh]['position'][:, 0],
-                           self.data[i_mesh]['position'][:, 1],
-                           self.data[i_mesh]['u_exact'], levels=levels)
-        plt.colorbar(c, ax=EX)
-        EX.tricontour(self.data[i_mesh]['position'][:, 0],
-                           self.data[i_mesh]['position'][:, 1],
-                           self.data[i_mesh]['u_exact'], levels=levels, colors='k')
-        EX.set_xlabel("L (m)")
-        EX.set_ylabel("H (m)")
-        EX.set_title("Solution analytique MMS/analytique")
+        # Solution analytique
+        c = ex.tricontourf(self.data[i_sim]['position'][:, 0],
+                           self.data[i_sim]['position'][:, 1],
+                           self.data[i_sim]['u_exact'], levels=levels, cmap=cmap)
+        plt.colorbar(c, ax=ex)
+        ex.tricontour(self.data[i_sim]['position'][:, 0],
+                      self.data[i_sim]['position'][:, 1],
+                      self.data[i_sim]['u_exact'], '--', levels=levels, colors='k')
+        ex.set_xlabel("L (m)")
+        ex.set_ylabel("b (m)")
+        ex.set_title("Solution analytique analytique")
 
+        save_path = f"images/{sim_name}_sim{i_sim}_contour.png"
         plt.savefig(save_path, dpi=200)
+        plt.clf()
 
-    def show_plan_solutions(self, i_mesh, title, save_path, X_Coupe, Y_Coupe):
-
+    def show_plan_solutions(self, i_sim, x_coupe, y_coupe):
         """
-        Affichage des graphiques qui montrent les résultats dans des coupes
-        en X ou en Y
+        Affiche les résultats selon un plan et x et un plan en y
+
         Parameters
         ----------
-        i_mesh: mesh
-            Maillage de l'exemple traité.
+        i_sim: int
+        Numéro de la simulation sélectionnée pour le post-processing de solution
 
-        title: str
-            Nom du document pour le sauvegarder
+        x_couple: float
+        Position de la coupe en x
 
-        save_path: str
-            Nom du fichier de sauvegarde
+        y_coupe: float
+        Position de la coupe en y
 
-        X_coupe: float
-            L'endroit de la coupe suivant la droite X=X_coupe
-        Y_coupe: float
-            L'endroit de la coupe suivant la droite Y=Y_coupe
         Returns
         -------
         None
         """
+
+        figure, (COUPEX, COUPEY) = plt.subplots(1, 2, figsize=(20, 6))
+
+        # Titre de la figure
+        sim_name = self.get_sim_name()
+        title = f'Solution de plans de la simulation "{sim_name}" de la vitesse u avec {self.data[i_sim]["n"]} ' \
+                f'éléments pour P = {self.data[i_sim]["P"]} utilisant une méthode {self.data[i_sim]["method"]}'
+        figure.suptitle(title)
+
         # Chercher l'indice des éléments à un X ou Y donné
+        centres = self.data[i_sim]['position']
+        elem_ds_coupeX, solution_coupeX, solutionEX_coupeX = \
+            Coupe_X(centres, x_coupe, self.data[i_sim]['u_num'], self.data[i_sim]['u_exact'], 0)
+        elem_ds_coupeY, solution_coupeY, solutionEX_coupeY = \
+            Coupe_X(centres, y_coupe, self.data[i_sim]['u_num'], self.data[i_sim]['u_exact'], 1)
 
-
-        Figure1, (COUPEX, COUPEY) = plt.subplots(1, 2, figsize=(20, 6))
-
-        Figure1.suptitle(f"{title} avec {self.data[i_mesh]['n']} éléments pour P = {self.data[i_mesh]['P']} utilisant une méthode {self.data[i_mesh]['method']}")
-
-        Centres = self.data[i_mesh]['position']
-
-        Elem_ds_coupeX, Solution_coupeX, SolutionEX_coupeX = \
-            Coupe_X(Centres, X_Coupe, self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact'], 0)
-        Elem_ds_coupeY, Solution_coupeY, SolutionEX_coupeY = \
-            Coupe_X(Centres, Y_Coupe, self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact'], 1)
-
-        COUPEX.plot(Solution_coupeX, Elem_ds_coupeX[:, 1], label="Solution Numérique")
-        COUPEX.plot(SolutionEX_coupeX, Elem_ds_coupeX[:, 1], '--', label="Solution MMS")
+        COUPEX.plot(solution_coupeX, elem_ds_coupeX[:, 1], label="Solution numérique")
+        COUPEX.plot(solutionEX_coupeX, elem_ds_coupeX[:, 1], '--', label="Solution analytique")
         COUPEX.set_xlabel("Vitesse")
         COUPEX.set_ylabel("Y (m)")
-        COUPEX.set_title(f"Solution dans une coupe à X = {X_Coupe}")
+        COUPEX.set_title(f"Solution dans une coupe à X = {x_coupe}")
         COUPEX.legend()
 
-        COUPEY.plot(Elem_ds_coupeY[:, 0], Solution_coupeY, label="Solution Numérique")
-        COUPEY.plot(Elem_ds_coupeY[:, 0], SolutionEX_coupeY, '--', label="Solution MMS/analytique")
+        COUPEY.plot(elem_ds_coupeY[:, 0], solution_coupeY, label="Solution numérique")
+        COUPEY.plot(elem_ds_coupeY[:, 0], solutionEX_coupeY, '--', label="Solution analytique")
         COUPEY.set_xlabel("X (m)")
         COUPEY.set_ylabel("Vitesse")
-        COUPEY.set_title(f"Solution dans une coupe à Y = {Y_Coupe}")
+        COUPEY.set_title(f"Solution dans une coupe à Y = {y_coupe}")
         COUPEY.legend()
-        plt.show(block=False)
 
         # Enregistrer
+        save_path = f"images/{sim_name}_sim{i_sim}_plans.png"
         plt.savefig(save_path, dpi=200)
-        plt.show()
+        plt.clf()
 
-
-    def show_pyvista(self, i_mesh, norm=False):
+    def show_pyvista(self, i_sim, norm=False):
         pv.set_plot_theme("document")
 
         # Préparation du maillage
         plotter = MeshPlotter()
-        nodes, elements = plotter.prepare_data_for_pyvista(self.data[i_mesh]['mesh'])
+        nodes, elements = plotter.prepare_data_for_pyvista(self.data[i_sim]['mesh'])
         pv_mesh_num = pv.PolyData(nodes, elements)
         pv_mesh_ex = pv.PolyData(nodes, elements)
 
         # Affiche la norme de la vitesse ou la vitesse en u
         if norm is True:
             # Solutions numériques et analytiques
-            pv_mesh_num['Vitesse numérique'] = self.data[i_mesh]['phi_num']
-            pv_mesh_ex['Vitesse analytique'] = self.data[i_mesh]['phi_exact']
-            levels = [np.min(np.append(self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact'])),
-                      np.max(np.append(self.data[i_mesh]['phi_num'], self.data[i_mesh]['phi_exact']))]
+            pv_mesh_num['Vitesse numérique'] = self.data[i_sim]['phi_num']
+            pv_mesh_ex['Vitesse analytique'] = self.data[i_sim]['phi_exact']
+            levels = [np.min(np.append(self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact'])),
+                      np.max(np.append(self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact']))]
         else:
-            pv_mesh_num['Vitesse numérique'] = self.data[i_mesh]['u_num']
-            pv_mesh_ex['Vitesse analytique'] = self.data[i_mesh]['u_exact']
-            levels = [np.min(np.append(self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact'])),
-                      np.max(np.append(self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']))]
+            pv_mesh_num['Vitesse numérique'] = self.data[i_sim]['u_num']
+            pv_mesh_ex['Vitesse analytique'] = self.data[i_sim]['u_exact']
+            levels = [np.min(np.append(self.data[i_sim]['u_num'], self.data[i_sim]['u_exact'])),
+                      np.max(np.append(self.data[i_sim]['u_num'], self.data[i_sim]['u_exact']))]
 
         # Création des graphiques
         pl = pv.Plotter(shape=(1, 2))  # Avant pvQt.BackgroundPlotter()
-        #pl.subplot(0, 0)
-        pl.add_text(f"Solution numérique\n {self.data[i_mesh]['n']} éléments\n "
-                    f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
+
+        # Solution numérique
+        pl.add_text(f"Solution numérique u \n {self.data[i_sim]['n']} éléments\n "
+                    f"P = {self.data[i_sim]['P']}\n Méthode = {self.data[i_sim]['method']}", font_size=15)
         pl.add_mesh(pv_mesh_num, show_edges=True, scalars='Vitesse numérique', cmap="jet", clim=levels)
         pl.camera_position = 'xy'
         pl.show_bounds()
 
+        # Solution analytique
         pl.subplot(0, 1)
-        pl.add_text(f"Solution analytique\n {self.data[i_mesh]['n']} éléments\n "
-                    f"P = {self.data[i_mesh]['P']}\n Méthode = {self.data[i_mesh]['method']}", font_size=15)
+        pl.add_text(f"Solution analytique u \n {self.data[i_sim]['n']} éléments\n "
+                    f"P = {self.data[i_sim]['P']}\n Méthode = {self.data[i_sim]['method']}", font_size=15)
         pl.add_mesh(pv_mesh_ex, show_edges=True, scalars='Vitesse analytique', cmap="jet", clim=levels)
         pl.camera_position = 'xy'
         pl.show_bounds()
 
         pl.link_views()
-        save_path = f"{self.sim_name}_mesh{i_mesh}_pyvista.png"
+        sim_name = self.get_sim_name()
+        save_path = f"images/{sim_name}_sim{i_sim}_pyvista.png"
         pl.show(screenshot=save_path)
         pl.clear()
 
-
-
     def show_error(self):
         """
-        Affichage des graphiques d'ordre de convergence et calcul de l'erreur
-        par rapport au solution exacte.
+        Affichage des graphiques d'ordre de convergence et calcul de l'erreur par rapport au solution exacte.
         Parameters
         ----------
         None
@@ -271,7 +314,7 @@ class PostProcessing:
         ax_E.add_artist(text)
 
         # Enregistrer
-        save_path = f"{self.sim_name}_error.png"
+        save_path = f"images/{self.sim_name}_error.png"
         plt.savefig(save_path, dpi=200)
+        plt.clf()
 
-        plt.show()

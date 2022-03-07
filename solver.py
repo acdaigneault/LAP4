@@ -104,8 +104,8 @@ def compute_source(P: int, dpdx: function, dpdy: function, volumes: numpy.ndarra
 
     # Calcule les gradients de pression aux centroids des éléments * volume
     for i in range(len(volumes)):
-        SGPXp[i] = dpdx(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
-        SGPYp[i] = dpdy(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
+        SGPXp[i] = -dpdx(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
+        SGPYp[i] = -dpdy(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
 
     return SGPXp, SGPYp
 
@@ -235,7 +235,6 @@ class FVMMomentum:
         rho, mu = case.get_physical_properties()
         dpdx, dpdy = case.get_sources()
         analytical_function = self.get_analytical_function()
-
 
         solver_GLS = GLS.GradientLeastSquares(mesh, bcdata, centroids)
         solver_GLS.set_P(P)
@@ -374,8 +373,8 @@ class FVMMomentum:
 
                 # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
                 for i_elem in range(mesh.get_number_of_elements()):
-                    Bu[i_elem] -= SGPXp[i_elem]
-                    Bv[i_elem] -= SGPYp[i_elem]
+                    Bu[i_elem] += SGPXp[i_elem]
+                    Bv[i_elem] += SGPYp[i_elem]
                     PHI_EXu[i_elem] = analytical_function[0](centroids[i_elem][0], centroids[i_elem][1], P)
                     PHI_EXv[i_elem] = analytical_function[1](centroids[i_elem][0], centroids[i_elem][1], P)
 
