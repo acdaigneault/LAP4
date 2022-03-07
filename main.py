@@ -89,9 +89,9 @@ processing.set_analytical_function((u, null))
 print("1. Simulation avec P = 0, 1 et -3")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 0, 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': 1, 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'UPWIND', 'P': -3, 'alpha': 0.75}]
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 0, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': 1, 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 25, 'Ny': 25, 'method': 'CENTRE', 'P': -3, 'alpha': 0.75}]
     postprocessing_parameters = {'plans': {'x': 0.5, 'y': 0.5},
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters, sim_name="classic_P")
@@ -102,9 +102,9 @@ print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
     P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'UPWIND', 'P': float(P), 'alpha': 0.75}]
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
                                  'solutions':  {'mesh': [0, 1, 2]},
                                  'pyvista': {'mesh': [0, 1, 2]}}
@@ -129,7 +129,7 @@ if rep == "Y" or rep == "y":
 #%% --------------------------------------  Cas écoulement de Couette tourné -------------------------------------- %%#
 print(" -------- Cas d'écoulement de Couette tourné --------")
 # Angle de rotation et matrice de rotation
-theta = np.pi/8
+theta = 0
 rotate = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
 
 # Terme source de pression, champ de vitesse & solution analytique
@@ -192,10 +192,11 @@ print("2. Simulations pour la convergence de l'erreur en maillage 'QUAD'")
 rep = input("   Exécuter? (Y ou N): ")
 if rep == "Y" or rep == "y":
     P = input("   Choix du paramètre P (entre -3 et 3): ")
-    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
-                              {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+    simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
+                              {'mesh_type': 'QUAD', 'Nx': 30, 'Ny': 30, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
                               {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
+                                 'solutions': {'mesh': [0, 1, 2]},
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters, sim_name="tourne_conv_quad")
 
@@ -209,6 +210,7 @@ if rep == "Y" or rep == "y":
                               {'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75},
                               {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': float(P), 'alpha': 0.75}]
     postprocessing_parameters = {'error': 'NA',
+                                 'solutions': {'mesh': [0, 1, 2]},
                                  'pyvista': {'mesh': [0, 1, 2]}}
     execute(processing, simulations_parameters, postprocessing_parameters, sim_name="tourne_conv_tri")
 

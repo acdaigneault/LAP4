@@ -102,7 +102,7 @@ class PostProcessing:
 
         # Set levels of color for the colorbar
         levels = np.linspace(np.min([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]),
-                             np.max([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]), num=30)
+                             np.max([self.data[i_mesh]['u_num'], self.data[i_mesh]['u_exact']]), num=20)
 
         # Solution numérique
         c = NUM.tricontourf(self.data[i_mesh]['position'][:, 0],
@@ -185,8 +185,10 @@ class PostProcessing:
 
         # Enregistrer
         plt.savefig(save_path, dpi=200)
+        plt.show()
 
-    def show_pyvista(self, i_mesh, norm=True):
+
+    def show_pyvista(self, i_mesh, norm=False):
         pv.set_plot_theme("document")
 
         # Préparation du maillage
@@ -229,68 +231,7 @@ class PostProcessing:
         pl.show(screenshot=save_path)
         pl.clear()
 
-    def show_mesh_differences(self, i_mesh1, i_mesh2, title, save_path, diff=False):
-        """
-        Affichage des graphiques qui montrent les résultats entre deux types
-        de maillage
-        Parameters
-        ----------
-        i_mesh1: mesh
-            Maillage 1 de l'exemple traité.
 
-        i_mesh2: mesh
-            Maillage 2 de l'exemple traité.
-
-        title: str
-            Nom du document pour le sauvegarder
-
-        save_path: str
-            Nom du fichier de sauvegarde
-
-        diff: Bool
-            Pour décider si on trace la différence (Erreur)  entre les deux maillages.
-        Returns
-        -------
-        None
-        """
-        if diff is True:
-            figure, (plot1, plot2, plot3) = plt.subplots(1, 3, figsize=(28, 6))
-        else:
-            figure, (plot1, plot2) = plt.subplots(1, 2, figsize=(20, 6))
-
-        figure.suptitle(title)
-        # Set levels of color for the colorbar
-        levels = np.linspace(np.min(np.append(self.data[i_mesh1]['phi_num'], self.data[i_mesh2]['phi_num'])),
-                             np.max(np.append(self.data[i_mesh1]['phi_num'], self.data[i_mesh2]['phi_num'])), num=40)
-
-        center1 = self.data[i_mesh1]['position']
-        c = plot1.tricontourf(center1[:, 0], center1[:, 1], self.data[i_mesh1]['phi_num'], levels=levels)
-        plot1.set_xlabel("L (m)")
-        plot1.set_ylabel("H (m)")
-        plot1.set_title(f"Mesh à {self.data[i_mesh1]['n']} éléments, P = {self.data[i_mesh1]['P']}, méthode = {self.data[i_mesh1]['method']}")
-        plt.colorbar(c, ax=plot1)
-
-        center2 = self.data[i_mesh2]['position']
-        c = plot2.tricontourf(center2[:, 0], center2[:, 1], self.data[i_mesh2]['phi_num'], levels=levels)
-        plot2.set_xlabel("L (m)")
-        plot2.set_ylabel("H (m)")
-        plot2.set_title(f"Mesh à {self.data[i_mesh2]['n']} éléments, P = {self.data[i_mesh2]['P']}, méthode = {self.data[i_mesh2]['method']}")
-        plt.colorbar(c, ax=plot2)
-
-        if diff is True:
-            err = np.abs(self.data[i_mesh1]['phi_num'] - self.data[i_mesh2]['phi_num'])
-
-            levels = np.linspace(np.min(err), np.max(err), num=40)
-
-            c = plot3.tricontourf(center1[:, 0], center1[:, 1], err, levels=levels)
-            plot3.set_xlabel("L (m)")
-            plot3.set_ylabel("H (m)")
-            plot3.set_title(f"Erreur absolue entre les maillages à {self.data[i_mesh1]['n']} éléments")
-            plt.colorbar(c, ax=plot3)
-
-
-        # Enregistrer
-        plt.savefig(save_path, dpi=200)
 
     def show_error(self):
         """
@@ -304,7 +245,7 @@ class PostProcessing:
         -------
         None
         """
-        # Calcul l'erreur (en x), l'ajoute aux données et détermine l'ordre de convergence
+        # Calcul l'erreur l'ajoute aux données et détermine l'ordre de convergence
         for i in range(len(self.data)):
             total_area = np.sum(self.data[i]['area'])
             area, n = self.data[i]['area'], self.data[i]['n']
@@ -328,5 +269,9 @@ class PostProcessing:
         ax_E.set_xlabel('Grandeur (h)')
         ax_E.set_ylabel('Erreur (E)')
         ax_E.add_artist(text)
+
+        # Enregistrer
+        save_path = f"{self.sim_name}_error.png"
+        plt.savefig(save_path, dpi=200)
 
         plt.show()

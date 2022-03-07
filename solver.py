@@ -341,7 +341,6 @@ class FVMMomentum:
                         D = (1/PNKSI) * mu * (dA/dKSI)
                         F = np.dot(rho*[bc_x(xa, ya, P), bc_y(xa, ya, P)], n) * dA
 
-                        """ Je ne suis pas certaine dont le cross-diffusion doit être implémenté"""
                         # Calcule du terme de cross-diffusion selon les phi aux noeuds de l'arête en x et y
                         phi0, phi1 = bc_x(pt0[0], pt0[1], P), bc_x(pt1[0], pt1[1], P)
                         Sdc_x = -mu * (PKSIETA/PNKSI) * rho * (phi1 - phi0)/dETA * dA
@@ -368,16 +367,10 @@ class FVMMomentum:
                         Fx, Fy = rho*phix, rho*phiy
                         F = np.dot(np.array([Fx, Fy]), n) * dA  # Débit massique qui traverse la face
 
-                        if method == "CENTRE":
-                            Bu[element] += mu * bc_x(xa, ya, P) * dA
-                            Bv[element] += mu * bc_y(xa, ya, P) * dA
-                        elif method == "UPWIND":
-                            Au[element, element] += F
-                            Bu[element] += (mu * dA - F * PNKSI * dKSI) * bc_x(xa, ya, P)
-                            Bv[element] += (mu * dA - F * PNKSI * dKSI) * bc_y(xa, ya, P)
-                        else:
-                            print("La méthode choisie n'est pas convenable, veuillez choisir CENTRE ou UPWIND")
-                            sys.exit()
+                        Au[element, element] += F
+                        Bu[element] += (mu * dA - F * PNKSI * dKSI) * bc_x(xa, ya, P)
+                        Bv[element] += (mu * dA - F * PNKSI * dKSI) * bc_y(xa, ya, P)
+
 
                 # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
                 for i_elem in range(mesh.get_number_of_elements()):
@@ -400,8 +393,8 @@ class FVMMomentum:
             Ru = np.linalg.norm(np.dot(Au, u) - Bu0)
             Rv = np.linalg.norm(np.dot(Av, v) - Bv0)
 
-            print(f"Itération {it} : |Ru|={Ru:.6f}.  |Rv|={Rv:.6f}")
-            tol = 1e-6
+            #print(f"Itération {it} : |Ru|={Ru:.7f}.  |Rv|={Rv:.7f}")
+            tol = 1e-7
             if it != 0 and Ru < tol and Rv < tol:
                 # Solution de l'itération précédence est bonne
                 convergence = True
