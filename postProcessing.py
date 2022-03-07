@@ -231,7 +231,7 @@ class PostProcessing:
         plt.savefig(save_path, dpi=200)
         plt.clf()
 
-    def show_pyvista(self, i_sim, norm=False):
+    def show_pyvista(self, i_sim, norm=True):
         pv.set_plot_theme("document")
 
         # Préparation du maillage
