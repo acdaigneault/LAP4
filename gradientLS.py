@@ -74,14 +74,14 @@ class GradientLeastSquares:
         self.P = new
 
     # Calcule le gradient du cas étudié
-    def solve(self, phiu, phiv):
+    def solve(self, phi):
 
         """
         Calcule les gradients des phi selon leur valeur
         
         Parameters
         ----------
-        phiu: numpy.ndarray
+        phi: numpy.ndarray
         Valeurs de u
 
         phiv: numpy.ndarray
@@ -90,18 +90,18 @@ class GradientLeastSquares:
         
         Returns
         -------
-        (GRADu, GRADv): Tuple[numpy.ndarray, numpy.ndarray]
-        GRADu -> Gradients dudx et dudy
+        (GRAD, GRADv): Tuple[numpy.ndarray, numpy.ndarray]
+        GRAD -> Gradients dudx et dudy
         GRADv -> Gradients dvdx et dvdy
 
         """
 
         # Initialisation des matrices et des données
         NTRI = self.mesh_obj.get_number_of_elements()  # Nombre d'éléments
-        ATA = np.zeros((NTRI, 2, 2))
-        ATAI = np.zeros((NTRI, 2, 2))
-        Bu, Bv = np.zeros((NTRI, 2)), np.zeros((NTRI, 2))
-        GRADu, GRADv = np.zeros((NTRI, 2)), np.zeros((NTRI, 2))
+        ATA = np.zeros([NTRI, 2, 2])
+        ATAI = np.zeros([NTRI, 2, 2])
+        B = np.zeros([NTRI, 2])
+        GRAD = np.zeros([NTRI, 2])
 
         # Variables locales
         mesh = self.get_mesh()  # Maillage utilisé
@@ -113,7 +113,7 @@ class GradientLeastSquares:
         for i_face in range(mesh.get_number_of_boundary_faces()):
             # Détermine le numéro de la frontière et les conditions associées
             tag = mesh.get_boundary_face_to_tag(i_face)
-            bc_type, (bc_x, bc_y) = bcdata[tag]
+            bc_type, bc_value = bcdata[tag]
 
             # Listes des noeuds et des éléments reliés à la face
             nodes = mesh.get_face_to_nodes(i_face)
@@ -127,8 +127,7 @@ class GradientLeastSquares:
 
             if bc_type == 'DIRICHLET':
                 # Calcul la différence des phi entre le point au centre de la face et au centre de l'élément
-                dphiu = bc_x(xA, yA, P) - phiu[element]
-                dphiv = bc_y(xA, yA, P) - phiv[element]
+                dphi = bc_value(xA, yA, P) - phi[element]
 
                 ALS = np.array([[dx * dx, dx * dy], [dy * dx, dy * dy]])
             elif bc_type == 'NEUMANN':
@@ -139,19 +138,15 @@ class GradientLeastSquares:
                 dx, dy = np.dot([dx, dy], n) * n
 
                 # Application de la condition frontière au point sur la face perpendiculaire au point central
-                dphiu = np.dot([dx, dy], n) * bc_x(xa, ya, P)
-                dphiv = np.dot([dx, dy], n) * bc_y(xa, ya, P)
+                dphi = np.dot([dx, dy], n) * bc_value(xa, ya, P)
 
                 ALS = np.array([[dx * dx, dx * dy], [dy * dx, dy * dy]])
             else:  # Condition libre
                 ALS = np.zeros(2, 2)
-                dphiu, dphiv = 0, 0
-
+                dphi = 0.
             ATA[element] += ALS
 
-            Bu[element] += (np.array([dx, dy]) * dphiu)
-            Bv[element] += (np.array([dx, dy]) * dphiv)
-
+            B[element] += (np.array([dx, dy]) * dphi)
 
 
         # Remplissage des matrices pour les faces internes
@@ -165,18 +160,14 @@ class GradientLeastSquares:
             ATA[elements[1]] += ALS
 
             # Remplisage du membre de droite
-            dphiu = phiu[elements[1]] - phiu[elements[0]]
-            dphiv = phiv[elements[1]] - phiv[elements[0]]
+            dphi = phi[elements[1]] - phi[elements[0]]
 
-            Bu[elements[0]] += (np.array([dx, dy]) * dphiu)
-            Bu[elements[1]] += (np.array([dx, dy]) * dphiu)
-            Bv[elements[0]] += (np.array([dx, dy]) * dphiv)
-            Bv[elements[1]] += (np.array([dx, dy]) * dphiv)
+            B[elements[0]] += (np.array([dx, dy]) * dphi)
+            B[elements[1]] += (np.array([dx, dy]) * dphi)
 
         # Résolution des systèmes matriciels pour tous les éléments
         for i_tri in range(NTRI):
             ATAI[i_tri] = np.linalg.inv(ATA[i_tri])
-            GRADu[i_tri] = np.dot(ATAI[i_tri], Bu[i_tri])
-            GRADv[i_tri] = np.dot(ATAI[i_tri], Bv[i_tri])
+            GRAD[i_tri] = np.dot(ATAI[i_tri], B[i_tri])
 
-        return GRADu, GRADv
+        return GRAD
