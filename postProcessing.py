@@ -257,7 +257,7 @@ class PostProcessing:
         pl = pv.Plotter(shape=(1, 2))  # Avant pvQt.BackgroundPlotter()
 
         # Solution numérique
-        pl.add_text(f"Solution numérique u \n {self.data[i_sim]['n']} éléments\n "
+        pl.add_text(f"Solution numérique (norme de la vitesse) \n {self.data[i_sim]['n']} éléments\n "
                     f"P = {self.data[i_sim]['P']}\n Méthode = {self.data[i_sim]['method']}", font_size=15)
         pl.add_mesh(pv_mesh_num, show_edges=True, scalars='Vitesse numérique', cmap="jet", clim=levels)
         pl.camera_position = 'xy'
@@ -265,7 +265,7 @@ class PostProcessing:
 
         # Solution analytique
         pl.subplot(0, 1)
-        pl.add_text(f"Solution analytique u \n {self.data[i_sim]['n']} éléments\n "
+        pl.add_text(f"Solution analytique (norme de la vitesse) \n {self.data[i_sim]['n']} éléments\n "
                     f"P = {self.data[i_sim]['P']}\n Méthode = {self.data[i_sim]['method']}", font_size=15)
         pl.add_mesh(pv_mesh_ex, show_edges=True, scalars='Vitesse analytique', cmap="jet", clim=levels)
         pl.camera_position = 'xy'

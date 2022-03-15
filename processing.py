@@ -22,7 +22,7 @@ Matricule: 2167132
 import numpy as np
 from meshConnectivity import MeshConnectivity
 from meshGenerator import MeshGenerator
-from solver import FVMMomentum
+from solver import FVM
 from postProcessing import PostProcessing
 
 import gradientLS as GLS
@@ -115,7 +115,7 @@ class Processing:
             preprocessing_data = self.execute_preprocessing(mesh_obj)
 
             # Initialise le solver et paramétrise la solution analytique et execute la solution selon la méthode
-            solver = FVMMomentum(self.case, mesh_obj, self.bcdata, preprocessing_data)
+            solver = FVM(self.case, mesh_obj, self.bcdata, preprocessing_data)
             solver.set_analytical_function(self.analytical_function)
             solver.set_P(sim_param['P'])
             solutions = solver.solve(sim_param['method'], sim_param['alpha'])

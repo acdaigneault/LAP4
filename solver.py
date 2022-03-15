@@ -2,7 +2,7 @@
 MEC6616 Aérodynamique Numérique
 
 
-@author: Audrey Collard-Daigneault
+@author: Adrey Collard-Daigneault
 Matricule: 1920374
     
     
@@ -12,11 +12,6 @@ Matricule: 2167132
 
 """
 
-# ----------------------------------------------------------------------------#
-#                                 MEC6616                                     #
-#                        LAP4 Équations du momentum                           #
-#               Collard-Daigneault Audrey, ZAYNI Mohamad Karim                #
-# ----------------------------------------------------------------------------#
 
 # %% IMPORTATION DES LIBRAIRIES
 
@@ -25,6 +20,8 @@ import scipy.sparse as sps
 from scipy.sparse.linalg.dsolve import linsolve
 import gradientLS as GLS
 import sys
+
+print("Les figures supplémentaires se retrouvent dans le dossier images")
 
 # %% Fonctions Internes
 def compute_lengths_and_unit_vectors(pta, ptb, ptA, ptP):
@@ -70,47 +67,8 @@ def compute_lengths_and_unit_vectors(pta, ptb, ptA, ptP):
 
     return dA, dKSI, n, eKSI, eETA
 
-def compute_source(P, dpdx, dpdy, volumes, centroids):
-    """
-    Calcule le terme source dû au gradient de pression
-def compute_source(P: int, dpdx: function, dpdy: function, volumes: numpy.ndarray, centroids: numpy.ndarray) -> Tuple[numpy.ndarray, numpy.ndarray]:
-
-
-    Parameters
-    ----------
-    P: int
-    Paramètre propre au problème étudié
-
-    dpdx: function
-    Fonction évaluant le terme dp/dx avec x, y, et P
-
-    dpdy: function
-    Fonction évaluant le terme dp/dy avec x, y, et P
-
-    volumes: numpy.ndarray
-    Array storant les volumes des éléments
-
-    centroids: numpy.ndarray
-    Array storant les coordonnées des centroides des éléments
-
-    Returns
-    -------
-    (SGPXp, SGPYp): Tuple[numpy.ndarray, numpy.ndarray]
-    SGPXp -> Terme de source pour l'équation du momentum en x lié à la pression
-    SGPYp -> Terme de source pour l'équation du momentum en y lié à la pression
-
-    """
-    SGPXp, SGPYp = np.zeros(len(volumes)), np.zeros(len(volumes))
-
-    # Calcule les gradients de pression aux centroids des éléments * volume
-    for i in range(len(volumes)):
-        SGPXp[i] = -dpdx(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
-        SGPYp[i] = -dpdy(x=centroids[i][0], y=centroids[i][1], P=P) * volumes[i]
-
-    return SGPXp, SGPYp
-
 # %% Classe
-class FVMMomentum:
+class FVM:
     """
     Méthode de volumes finis pour un problème de transfert de momentum en 2D
 
@@ -120,7 +78,7 @@ class FVMMomentum:
     Cas traité qui a les informations sur la physique du problème
 
     mesh_obj: Mesh
-    Maillage de la simulation
+    Maillage de la sigammalation
 
     bcdata: Tuple
     Ensemble de donnée sur les conditions limites aux parois
@@ -134,7 +92,7 @@ class FVMMomentum:
     Cas traité qui a les informations sur la physique du problème
 
     mesh_obj: Mesh
-    Maillage de la simulation
+    Maillage de la sigammalation
 
     bcdata: Tuple
     Ensemble de donnée sur les conditions limites aux parois
@@ -156,7 +114,7 @@ class FVMMomentum:
 
     def set_analytical_function(self, analytical_function):
         """
-        Ajoute une solution analytique au problème simulé lorsque disponible et/ou nécessaire
+        Ajoute une solution analytique au problème sigammalé lorsque disponible et/ou nécessaire
 
         Parameters
         ----------
@@ -202,7 +160,7 @@ class FVMMomentum:
         Parameters
         ----------
         method: str = "CENTRE"
-        Méthode pour la simulation en convection (CENTRE ou UPWIND)
+        Méthode pour la sigammalation en convection (CENTRE ou UPWIND)
 
         alpha: float = 0.75)
         Facteur de relaxation
@@ -214,6 +172,16 @@ class FVMMomentum:
         (PHI_EXu, PHI_EXv) -> Solution analytique en x et y
 
         """
+        # Initiation des matrices
+        NELEM = self.mesh_obj.get_number_of_elements()
+        A = np.zeros([NELEM, NELEM])
+        B = np.zeros(NELEM)
+        PHI = np.zeros(NELEM)
+        PHI_EX = np.zeros(NELEM)
+        GRAD = np.zeros([NELEM, 2])
+
+
+
         # Chercher les différentes variables
         mesh = self.get_mesh()          # Maillage utilisé
         case = self.get_case()          # cas en cours
@@ -222,190 +190,132 @@ class FVMMomentum:
         bcdata = self.get_bcdata()      # Conditions limites
         P = self.get_P()                # Paramètre modifié
 
-        # Initialisation des matrices et des vecteurs pour u et v
-        NELEM = self.mesh_obj.get_number_of_elements()
-
-        # Matrice/vecteurs pour l'itération i+1
-        Bu0, Bv0 = np.zeros(NELEM), np.zeros(NELEM)
-
-        # Test de convergence respecté
-        convergence = False
-
         # Variables locales
-        rho, mu = case.get_physical_properties()
-        dpdx, dpdy = case.get_sources()
+        rho, gamma = case.get_physical_properties()
+        source_term = case.get_sources()
+        U = case.get_velocity_field()
         analytical_function = self.get_analytical_function()
 
         solver_GLS = GLS.GradientLeastSquares(mesh, bcdata, centroids)
         solver_GLS.set_P(P)
 
-        # Calcule les termes sources reliés au gradient de pression
-        SGPXp, SGPYp = compute_source(P, dpdx, dpdy, volumes, centroids)
+        # Boucle pour le cross-diffusion
+        for i in range(3):
+            # Parcours les faces internes et remplis la matrice A et le vecteur B
+            for i_face in range(mesh.get_number_of_boundary_faces(), mesh.get_number_of_faces()):
+                # Listes des noeuds et des éléments reliés à la face
+                nodes = mesh.get_face_to_nodes(i_face)
+                left_elem, right_elem = mesh.get_face_to_elements(i_face)
 
-        # Valeur des vitesses à it = 0 (valeur posée)
-        u, v = np.zeros(NELEM), np.zeros(NELEM)
+                # Calcule des grandeurs et vecteurs géométriques pertinents
+                dA, dKSI, n, eKSI, eETA = \
+                    compute_lengths_and_unit_vectors(pta=mesh.get_node_to_xycoord(nodes[0]),
+                                                     ptb=mesh.get_node_to_xycoord(nodes[1]),
+                                                     ptA=centroids[right_elem],
+                                                     ptP=centroids[left_elem])
 
-        # Boucle pour l'algorithme principal de résolution non-linéaire
-        it = 0
-        while convergence is False:
-            # Matrices/vecteurs pour l'itération i
-            Au = np.zeros((NELEM, NELEM))
-            Bu, Bv = np.zeros(NELEM), np.zeros(NELEM)
-            PHIu, PHIv = np.zeros(NELEM), np.zeros(NELEM)
-            PHI_EXu, PHI_EXv = np.zeros(NELEM), np.zeros(NELEM)
-            GRADu, GRADv = np.zeros((NELEM, 2)), np.zeros((NELEM, 2))
 
-            # Boucle pour le cross-diffusion
-            for i in range(2):
+                # Détermine la position du centre de la face
+                pt0, pt1 = mesh.get_node_to_xycoord(nodes[0]), mesh.get_node_to_xycoord(nodes[1])
+                xa, ya = 0.5*(pt0[0] + pt1[0]), 0.5*(pt0[1] + pt1[1])
 
-                # Parcours les faces internes et remplis la matrice A et le vecteur B
-                for i_face in range(mesh.get_number_of_boundary_faces(), mesh.get_number_of_faces()):
-                    # Listes des noeuds et des éléments reliés à la face
-                    nodes = mesh.get_face_to_nodes(i_face)
-                    left_elem, right_elem = mesh.get_face_to_elements(i_face)
+                # Convection
+                F = np.dot(U(xa, ya), n) * dA  # Débit massique qui traverse la face
 
-                    # Calcule des grandeurs et vecteurs géométriques pertinents
-                    dA, dKSI, n, eKSI, eETA = \
-                        compute_lengths_and_unit_vectors(pta=mesh.get_node_to_xycoord(nodes[0]),
-                                                         ptb=mesh.get_node_to_xycoord(nodes[1]),
-                                                         ptA=centroids[right_elem],
-                                                         ptP=centroids[left_elem])
+                # Calcule les projections de vecteurs unitaires
+                PNKSI = np.dot(n, eKSI)       # Projection de n sur ξ
+                PKSIETA = np.dot(eKSI, eETA)  # Projection de ξ sur η
 
-                    # Calcule du flux au centre de la face (moyenne simple : (Fxp+FxA)/2 = rho(uxp+uxA)/2)
-                    Fx, Fy = rho*0.5*(u[left_elem] + u[right_elem]), rho*0.5*(v[left_elem] + v[right_elem])
-                    F = np.dot([Fx, Fy], n) * dA  # Débit massique qui traverse la face
+                D = (1/PNKSI) * gamma * (dA / dKSI)  # Direct gradient term
 
-                    # Calcule les projections de vecteurs unitaires
-                    PNKSI = np.dot(n, eKSI)       # Projection de n sur ξ
-                    PKSIETA = np.dot(eKSI, eETA)  # Projection de ξ sur η
+                # Calcule le terme correction de cross-diffusion
+                Sdc = -gamma * (PKSIETA/PNKSI) * 0.5*np.dot((GRAD[right_elem] + GRAD[left_elem]), eETA) * dA
 
-                    D = (1/PNKSI) * mu * (dA / dKSI)  # Direct gradient term
+                # Ajoute la contribution de la convection à la matrice A
+                if method == "CENTRE":
+                    # Remplissage de la matrice et du vecteur
+                    A[left_elem, left_elem]   +=  D + 0.5*F
+                    A[right_elem, right_elem] +=  D - 0.5*F
+                    A[left_elem, right_elem]  += -D + 0.5*F
+                    A[right_elem, left_elem]  += -D - 0.5*F
+                elif method == "UPWIND":
+                    # Remplissage de la matrice et du vecteur
+                    A[left_elem, left_elem]   +=  (D + max(F, 0))
+                    A[right_elem, right_elem] +=  (D + max(0, -F))
+                    A[left_elem, right_elem]  += (-D - max(0, -F))
+                    A[right_elem, left_elem]  += (-D - max(F, 0))
 
-                    # Calcule le terme correction de cross-diffusion
-                    Sdc_x = -mu * (PKSIETA/PNKSI) * 0.5*np.dot((GRADu[right_elem] + GRADu[left_elem]), eETA) * dA
-                    Sdc_y = -mu * (PKSIETA/PNKSI) * 0.5*np.dot((GRADv[right_elem] + GRADv[left_elem]), eETA) * dA
+                else:
+                    print("La méthode choisie n'est pas convenable, veuillez choisir Centre ou Upwind")
+                    sys.exit()
 
-                    # Ajoute la contribution de la convection à la matrice Au
+                B[left_elem]  += Sdc
+                B[right_elem] -= Sdc
+
+
+            # Parcours les faces sur les conditions frontières et remplis la matrice A et le vecteur B
+            for i_face in range(mesh.get_number_of_boundary_faces()):
+                # Détermine le numéro de la frontière et les conditions associées
+                tag = mesh.get_boundary_face_to_tag(i_face)
+                bc_type, bc_value = bcdata[tag]
+
+                # Listes des noeuds et des éléments reliés à la face
+                nodes = mesh.get_face_to_nodes(i_face)
+                element = mesh.get_face_to_elements(i_face)[0]
+
+                # Détermine la position du centre de la face
+                pt0, pt1 = mesh.get_node_to_xycoord(nodes[0]), mesh.get_node_to_xycoord(nodes[1])
+                xa, ya = 0.5*(pt0[0] + pt1[0]), 0.5*(pt0[1] + pt1[1])
+
+                dA, dKSI, n, eKSI, eETA = \
+                    compute_lengths_and_unit_vectors(pta=mesh.get_node_to_xycoord(nodes[0]),
+                                                     ptb=mesh.get_node_to_xycoord(nodes[1]),
+                                                     ptA=(xa, ya),
+                                                     ptP=centroids[element])
+
+                # Calcule les projections de vecteurs unitaires
+                dETA = dA  # Équivalent, mais noté pour éviter la confusion
+                PNKSI = np.dot(n, eKSI)  # Projection de n sur ξ
+                PKSIETA = np.dot(eKSI, eETA)  # Projection de ξ sur η
+
+                F = np.dot(U(xa, ya), n) * dA
+
+                if bc_type == "DIRICHLET":
+                    # Détermine le terme du gradient direct et le flux massique au centre de la frontière
+                    D = (1/PNKSI) * gamma * (dA/dKSI)
+
+                    # Calcule du terme de cross-diffusion selon les phi aux noeuds de l'arête en x et y
+                    phi0, phi1 = bc_value(pt0[0], pt0[1], P), bc_value(pt1[0], pt1[1], P)
+                    Sdc = -gamma * (PKSIETA/PNKSI) * rho * (phi1 - phi0)/dETA * dA
+
+
                     if method == "CENTRE":
-                        # Remplissage de la matrice et du vecteur
-                        Au[left_elem, left_elem]   +=  D + 0.5*F
-                        Au[right_elem, right_elem] +=  D - 0.5*F
-                        Au[left_elem, right_elem]  += -D + 0.5*F
-                        Au[right_elem, left_elem]  += -D - 0.5*F
+                        A[element, element] += D
+                        B[element] += (D - F) * bc_value(xa, ya, P) + Sdc
                     elif method == "UPWIND":
-                        # Remplissage de la matrice et du vecteur
-                        Au[left_elem, left_elem]   +=  (D + max(F, 0))
-                        Au[right_elem, right_elem] +=  (D + max(0, -F))
-                        Au[left_elem, right_elem]  += (-D - max(0, -F))
-                        Au[right_elem, left_elem]  += (-D - max(F, 0))
-
+                        A[element, element] += D + max(F, 0)
+                        B[element] += (D + max(0, -F)) * bc_value(xa, ya, P) + Sdc
                     else:
-                        print("La méthode choisie n'est pas convenable, veuillez choisir Centre ou Upwind")
+                        print("La méthode choisie n'est pas convenable, veuillez choisir CENTRE ou UPWIND")
                         sys.exit()
 
-                    Bu[left_elem]  += Sdc_x
-                    Bu[right_elem] -= Sdc_x
-                    Bv[left_elem]  += Sdc_y
-                    Bv[right_elem] -= Sdc_y
+                elif bc_type == "NEUMANN":
+                    A[element, element] += F
+                    B[element] += (gamma * dA) * bc_value(xa, ya, P)
+                    if method == "UPWIND":
+                        B[element] += - F * PNKSI * dKSI * bc_value(xa, ya, P)
 
 
-                # Parcours les faces sur les conditions frontières et remplis la matrice A et le vecteur B
-                for i_face in range(mesh.get_number_of_boundary_faces()):
-                    # Détermine le numéro de la frontière et les conditions associées
-                    tag = mesh.get_boundary_face_to_tag(i_face)
-                    bc_type, (bc_x, bc_y) = bcdata[tag]
+            # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
+            for i_elem in range(mesh.get_number_of_elements()):
+                B[i_elem] += source_term(centroids[i_elem][0], centroids[i_elem][1], P) * volumes[i_elem]
+                PHI_EX[i_elem] = analytical_function[0](centroids[i_elem][0], centroids[i_elem][1], P)
 
-                    # Listes des noeuds et des éléments reliés à la face
-                    nodes = mesh.get_face_to_nodes(i_face)
-                    element = mesh.get_face_to_elements(i_face)[0]
+            # Résolution pour l'itération
+            PHI = linsolve.spsolve(sps.csr_matrix(A, dtype=np.float64), B)
 
-                    # Détermine la position du centre de la face
-                    pt0, pt1 = mesh.get_node_to_xycoord(nodes[0]), mesh.get_node_to_xycoord(nodes[1])
-                    xa, ya = 0.5*(pt0[0] + pt1[0]), 0.5*(pt0[1] + pt1[1])
-
-                    dA, dKSI, n, eKSI, eETA = \
-                        compute_lengths_and_unit_vectors(pta=mesh.get_node_to_xycoord(nodes[0]),
-                                                         ptb=mesh.get_node_to_xycoord(nodes[1]),
-                                                         ptA=(xa, ya),
-                                                         ptP=centroids[element])
-
-                    # Calcule les projections de vecteurs unitaires
-                    dETA = dA  # Équivalent, mais noté pour éviter la confusion
-                    PNKSI = np.dot(n, eKSI)  # Projection de n sur ξ
-                    PKSIETA = np.dot(eKSI, eETA)  # Projection de ξ sur η
+            # Calcule des gradients pour le cross-diffusion
+            GRAD = solver_GLS.solve(PHI)
 
 
-                    if bc_type == "DIRICHLET":
-                        # Détermine le terme du gradient direct et le flux massique au centre de la frontière
-                        D = (1/PNKSI) * mu * (dA/dKSI)
-                        F = np.dot(rho*[bc_x(xa, ya, P), bc_y(xa, ya, P)], n) * dA
-
-                        # Calcule du terme de cross-diffusion selon les phi aux noeuds de l'arête en x et y
-                        phi0, phi1 = bc_x(pt0[0], pt0[1], P), bc_x(pt1[0], pt1[1], P)
-                        Sdc_x = -mu * (PKSIETA/PNKSI) * rho * (phi1 - phi0)/dETA * dA
-
-                        phi0, phi1 = bc_y(pt0[0], pt0[1], P), bc_y(pt1[0], pt1[1], P)
-                        Sdc_y = -mu * (PKSIETA/PNKSI) * rho * (phi1 - phi0)/dETA * dA
-
-                        if method == "CENTRE":
-                            Au[element, element] += D
-                            Bu[element] += (D - F) * bc_x(xa, ya, P) + Sdc_x
-                            Bv[element] += (D - F) * bc_y(xa, ya, P) + Sdc_y
-                        elif method == "UPWIND":
-                            Au[element, element] += D + max(F, 0)
-                            Bu[element] += (D + max(0, -F)) * bc_x(xa, ya, P) + Sdc_x
-                            Bv[element] += (D + max(0, -F)) * bc_y(xa, ya, P) + Sdc_y
-                        else:
-                            print("La méthode choisie n'est pas convenable, veuillez choisir CENTRE ou UPWIND")
-                            sys.exit()
-
-                    elif bc_type == "NEUMANN":
-                        phix = u[element] - bc_x(xa, ya, P) * PNKSI * dKSI  # ui à la CF
-                        phiy = v[element] - bc_y(xa, ya, P) * PNKSI * dKSI  # vi à la CF
-
-                        Fx, Fy = rho*phix, rho*phiy
-                        F = np.dot(np.array([Fx, Fy]), n) * dA  # Débit massique qui traverse la face
-
-                        Au[element, element] += F
-                        Bu[element] += (mu * dA - F * PNKSI * dKSI) * bc_x(xa, ya, P)
-                        Bv[element] += (mu * dA - F * PNKSI * dKSI) * bc_y(xa, ya, P)
-
-
-                # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
-                for i_elem in range(mesh.get_number_of_elements()):
-                    Bu[i_elem] += SGPXp[i_elem]
-                    Bv[i_elem] += SGPYp[i_elem]
-                    PHI_EXu[i_elem] = analytical_function[0](centroids[i_elem][0], centroids[i_elem][1], P)
-                    PHI_EXv[i_elem] = analytical_function[1](centroids[i_elem][0], centroids[i_elem][1], P)
-
-                # Av = Au puisque les conditions sont de même type
-                Av = Au
-
-                # Résolution pour l'itération
-                PHIu = linsolve.spsolve(sps.csr_matrix(Au, dtype=np.float64), Bu)
-                PHIv = linsolve.spsolve(sps.csr_matrix(Av, dtype=np.float64), Bv)
-
-                # Calcule des gradients pour le cross-diffusion
-                GRADu, GRADv = solver_GLS.solve(PHIu, PHIv)
-
-            # Vérification des normes de résidu pour l'itération précédante
-            Ru = np.linalg.norm(np.dot(Au, u) - Bu0)
-            Rv = np.linalg.norm(np.dot(Av, v) - Bv0)
-
-            #print(f"Itération {it} : |Ru|={Ru:.7f}.  |Rv|={Rv:.7f}")
-            tol = 1e-7
-            if it != 0 and Ru < tol and Rv < tol:
-                # Solution de l'itération précédence est bonne
-                convergence = True
-            else:
-                # Sous-relaxation itérative avec la solution de l'itération précédante (u et v)
-                u = alpha * PHIu + (1 - alpha) * u
-                v = alpha * PHIv + (1 - alpha) * v
-
-                # Store les vecteurs B pour le calcule des résidus
-                Bu0 = Bu
-                Bv0 = Bv
-
-            it += 1
-
-        return (u, v), (PHI_EXu, PHI_EXv)
+        return PHI, PHI_EX

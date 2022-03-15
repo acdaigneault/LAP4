@@ -56,11 +56,12 @@ class Case:
     Domaine de la géométrie étudiée
 
     """
-    
-    def __init__(self, rho, mu,  source_terms, domain):
+
+    def __init__(self, rho, gamma, source_terms, velocity_field, domain):
         self.rho = rho
-        self.mu = mu
+        self.gamma = gamma
         self.source_terms = source_terms
+        self.velocity_field = velocity_field
         self.domain = domain
     
     #Accesseurs
@@ -68,7 +69,10 @@ class Case:
         return self.source_terms
 
     def get_physical_properties(self):
-        return self.rho, self.mu
+        return self.rho, self.gamma
+
+    def get_velocity_field(self):
+        return self.velocity_field
 
     def set_sources(self, source_terms):
         self.source_terms = source_terms
