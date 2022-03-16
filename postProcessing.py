@@ -79,7 +79,7 @@ class PostProcessing:
         Maillage de la simulation
 
         solutions: Tuple[Tuple[numpy.ndarray, numpy.ndarray], Tuple[numpy.ndarray, numpy.ndarray]]
-        Solutions numérique (u, v) et solutions analytiques (u_exact, v_exact)
+        Solutions numérique (u, v) et solutions analytiques (phi_exact, v_exact)
 
         preprocessing_data: Tuple[numpy.ndarray, numpy.ndarray],
         Arrays contenant les données de preprocessing (volumes et position du centroide des éléments)
@@ -92,17 +92,11 @@ class PostProcessing:
         None
         """
 
-        # Calcule les normes de vitesse
-        phi_num, phi_ex = np.zeros(len(solutions[0][0])), np.zeros(len(solutions[0][0]))
-        for i in range(len(solutions[0][0])):
-            phi_num[i] = np.sqrt(solutions[0][0][i]**2 + solutions[0][1][i]**2)
-            phi_ex[i] = np.sqrt(solutions[1][0][i]**2 + solutions[1][1][i]**2)
-
         # Stockage de données de la simulation
         # n: int                        -> Nombre d'éléments dans le maillage
         # mesh: Mesh                    -> maillage (utilise pour PyVista)
-        # u_num, v_num: np.ndarray      -> Solutions numériques pour les 2 directions
-        # u_exact, v_exact: np.ndarray  -> Solutions analytiques pour les 2 directions
+        # phi_num, v_num: np.ndarray      -> Solutions numériques pour les 2 directions
+        # phi_exact, v_exact: np.ndarray  -> Solutions analytiques pour les 2 directions
         # phi_num: np.ndarray           -> Norme de la solution numérique
         # phi_exact: np.ndarray         -> Norme de la solution analytique
         # area: np.ndarray              -> Volume des éléments
@@ -111,10 +105,7 @@ class PostProcessing:
         # method: str                   -> Méthode utilisée (correction pour la convection) CENTRE ou UPWIND
         self.data.append({'n': mesh.get_number_of_elements(),
                           'mesh': mesh,
-                          'u_num': solutions[0][0], 'u_exact': solutions[1][0],
-                          'v_num': solutions[0][1], 'v_exact': solutions[1][1],
-                          'phi_num': phi_num,
-                          'phi_exact': phi_ex,
+                          'phi_num': solutions[0], 'phi_exact': solutions[1],
                           'area': preprocessing_data[0],
                           'position': preprocessing_data[1],
                           'P': simulation_paramaters['P'],
@@ -146,17 +137,17 @@ class PostProcessing:
         figure.suptitle(title)
 
         # Mise à l'échelle de la colorbar pour les 2 graphiques
-        levels = np.linspace(np.min([self.data[i_sim]['u_num'], self.data[i_sim]['u_exact']]),
-                             np.max([self.data[i_sim]['u_num'], self.data[i_sim]['u_exact']]), num=20)
+        levels = np.linspace(np.min([self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact']]),
+                             np.max([self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact']]), num=20)
 
         # Solution numérique
         c = num.tricontourf(self.data[i_sim]['position'][:, 0],
                             self.data[i_sim]['position'][:, 1],
-                            self.data[i_sim]['u_num'], levels=levels, cmap=cmap)
+                            self.data[i_sim]['phi_num'], levels=levels, cmap=cmap)
         plt.colorbar(c, ax=num)
         num.tricontour(self.data[i_sim]['position'][:, 0],
                        self.data[i_sim]['position'][:, 1],
-                       self.data[i_sim]['u_num'], '--', levels=levels, colors='k')
+                       self.data[i_sim]['phi_num'], '--', levels=levels, colors='k')
         num.set_xlabel("L (m)")
         num.set_ylabel("b (m)")
         num.set_title("Solution numérique")
@@ -164,11 +155,11 @@ class PostProcessing:
         # Solution analytique
         c = ex.tricontourf(self.data[i_sim]['position'][:, 0],
                            self.data[i_sim]['position'][:, 1],
-                           self.data[i_sim]['u_exact'], levels=levels, cmap=cmap)
+                           self.data[i_sim]['phi_exact'], levels=levels, cmap=cmap)
         plt.colorbar(c, ax=ex)
         ex.tricontour(self.data[i_sim]['position'][:, 0],
                       self.data[i_sim]['position'][:, 1],
-                      self.data[i_sim]['u_exact'], '--', levels=levels, colors='k')
+                      self.data[i_sim]['phi_exact'], '--', levels=levels, colors='k')
         ex.set_xlabel("L (m)")
         ex.set_ylabel("b (m)")
         ex.set_title("Solution analytique analytique")
@@ -208,9 +199,9 @@ class PostProcessing:
         # Chercher l'indice des éléments à un X ou Y donné
         centres = self.data[i_sim]['position']
         elem_ds_coupeX, solution_coupeX, solutionEX_coupeX = \
-            Coupe_X(centres, x_coupe, self.data[i_sim]['u_num'], self.data[i_sim]['u_exact'], 0)
+            Coupe_X(centres, x_coupe, self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact'], 0)
         elem_ds_coupeY, solution_coupeY, solutionEX_coupeY = \
-            Coupe_X(centres, y_coupe, self.data[i_sim]['u_num'], self.data[i_sim]['u_exact'], 1)
+            Coupe_X(centres, y_coupe, self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact'], 1)
 
         COUPEX.plot(solution_coupeX, elem_ds_coupeX[:, 1], label="Solution numérique")
         COUPEX.plot(solutionEX_coupeX, elem_ds_coupeX[:, 1], '--', label="Solution analytique")
@@ -240,18 +231,10 @@ class PostProcessing:
         pv_mesh_num = pv.PolyData(nodes, elements)
         pv_mesh_ex = pv.PolyData(nodes, elements)
 
-        # Affiche la norme de la vitesse ou la vitesse en u
-        if norm is True:
-            # Solutions numériques et analytiques
-            pv_mesh_num['Vitesse numérique'] = self.data[i_sim]['phi_num']
-            pv_mesh_ex['Vitesse analytique'] = self.data[i_sim]['phi_exact']
-            levels = [np.min(np.append(self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact'])),
-                      np.max(np.append(self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact']))]
-        else:
-            pv_mesh_num['Vitesse numérique'] = self.data[i_sim]['u_num']
-            pv_mesh_ex['Vitesse analytique'] = self.data[i_sim]['u_exact']
-            levels = [np.min(np.append(self.data[i_sim]['u_num'], self.data[i_sim]['u_exact'])),
-                      np.max(np.append(self.data[i_sim]['u_num'], self.data[i_sim]['u_exact']))]
+        pv_mesh_num['Vitesse numérique'] = self.data[i_sim]['phi_num']
+        pv_mesh_ex['Vitesse analytique'] = self.data[i_sim]['phi_exact']
+        levels = [np.min(np.append(self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact'])),
+                  np.max(np.append(self.data[i_sim]['phi_num'], self.data[i_sim]['phi_exact']))]
 
         # Création des graphiques
         pl = pv.Plotter(shape=(1, 2))  # Avant pvQt.BackgroundPlotter()

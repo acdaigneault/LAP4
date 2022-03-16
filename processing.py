@@ -118,7 +118,7 @@ class Processing:
             solver = FVM(self.case, mesh_obj, self.bcdata, preprocessing_data)
             solver.set_analytical_function(self.analytical_function)
             solver.set_P(sim_param['P'])
-            solutions = solver.solve(sim_param['method'], sim_param['alpha'])
+            solutions = solver.solve(sim_param['method'])
 
             # Store les résultats de la simulation et des infos pertinentes pour le post-traitement
             postprocessing.set_data(mesh_obj, solutions, preprocessing_data, sim_param)

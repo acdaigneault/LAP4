@@ -220,7 +220,7 @@ class FVM:
                 xa, ya = 0.5*(pt0[0] + pt1[0]), 0.5*(pt0[1] + pt1[1])
 
                 # Convection
-                F = np.dot(U(xa, ya), n) * dA  # Débit massique qui traverse la face
+                F = np.dot(U(xa, ya, P), n) * dA  # Débit massique qui traverse la face
 
                 # Calcule les projections de vecteurs unitaires
                 PNKSI = np.dot(n, eKSI)       # Projection de n sur ξ
@@ -278,7 +278,7 @@ class FVM:
                 PNKSI = np.dot(n, eKSI)  # Projection de n sur ξ
                 PKSIETA = np.dot(eKSI, eETA)  # Projection de ξ sur η
 
-                F = np.dot(U(xa, ya), n) * dA
+                F = np.dot(U(xa, ya, P), n) * dA
 
                 if bc_type == "DIRICHLET":
                     # Détermine le terme du gradient direct et le flux massique au centre de la frontière
@@ -309,7 +309,7 @@ class FVM:
             # Ajout de la contribution du terme source sur les éléments et calcul de la solution analytique
             for i_elem in range(mesh.get_number_of_elements()):
                 B[i_elem] += source_term(centroids[i_elem][0], centroids[i_elem][1], P) * volumes[i_elem]
-                PHI_EX[i_elem] = analytical_function[0](centroids[i_elem][0], centroids[i_elem][1], P)
+                PHI_EX[i_elem] = analytical_function(centroids[i_elem][0], centroids[i_elem][1], P)
 
             # Résolution pour l'itération
             PHI = linsolve.spsolve(sps.csr_matrix(A, dtype=np.float64), B)
