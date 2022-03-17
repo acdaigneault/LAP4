@@ -34,8 +34,9 @@ mu = 1  # viscosité dynamique [Pa*s]
 U = 1   # Vitesse de la paroi mobile [m/s]
 
 # Dimensions du domaine
-b = 1  # Distance entre 2 plaques [m]
-L = 1  # Longueur des plaques [m]
+H = 5  # Distance entre 2 plaques [m]
+L = 10  # Longueur des plaques [m]
+R = 2
 
 def execute(processing, simulations_parameters, postprocessing_parameters, sim_name):
     print("   • En execution")
@@ -69,16 +70,12 @@ if exe_case == "Y" or exe_case == "y":
     # Propriétés physiques
     rho = 1  # kg/m³
     Cp = 1  # J/kg-K
-    # k = 1   # W/m-K
-
-    # Longueur du domaine
-    L = 1  # m
-
+    k = 1   # W/m-K
     x, y, P = sp.symbols('x y P')
 
     # Champ de vitesse
-    u = (2 * x ** 2 - x ** 4 - 1.0) * (y - y ** 3)
-    v = -(2 * y ** 2 - y ** 4 - 1.0) * (x - x ** 3)
+    u = U + U*R*R/(x**2+y**2)*(1.-2.*x*x/(x**2+y**2))
+    v = U*R*R/(x**2+y**2)*(-2.*x*y/(x**2+y**2))
     f_U_MMS = sp.lambdify([x, y, P], u, "numpy")
     f_V_MMS = sp.lambdify([x, y, P], v, "numpy")
 
@@ -88,8 +85,7 @@ if exe_case == "Y" or exe_case == "y":
 
 
     # Champ de température (MMS)
-    T0, Tx, Txy = 400, 45, 27.5
-    T_MMS = T0 + Tx * sp.cos(np.pi * x) + Txy * sp.sin(np.pi * x * y)
+    T_MMS = sp.tanh(-2.*(y-1.))-sp.tanh(-2.*(y+1.))
     f_T_MMS = sp.lambdify([x, y, P], T_MMS, "numpy")
 
 
@@ -97,53 +93,25 @@ if exe_case == "Y" or exe_case == "y":
         return f_T_MMS(x, y, P)
 
 
-    # Terme source dérivé de la MMS
-    source = (rho * Cp * sp.diff(u * T_MMS, x, 1) +
-              rho * Cp * sp.diff(v * T_MMS, y, 1) -
-              P * (sp.diff(T_MMS, x, 2) + sp.diff(T_MMS, y, 2)))
-    f_source = sp.lambdify([x, y, P], source, "numpy")
-
-
     def q(x, y, P):
-        return f_source(x, y, P)
+        return 0.
 
-
-    # Conditions limites dérivées de la MMS
-    # Cas si MMS appliquée en dirichlet à droite (dT_MMS/dx)
-    f_dT_MSS_dx = sp.lambdify([x, y, P], sp.diff(T_MMS, x, 1), "numpy")
-
-
-    def MMS_X_droite(x, y, P):
-        return f_dT_MSS_dx(x, y, P)
-
-
-    # Cas si MMS appliquée en dirichlet à gauche (-dT_MMS/dx)
-    def MMS_X_gauche(x, y, P):
-        return -MMS_X_droite(x, y, P)
-
-
-    # Cas MMS appliquée en bas ou en haut du domaine (dT_MMS/y)
-    f_dT_MSS_dy = sp.lambdify([x, y, P], sp.diff(T_MMS, y, 1), "numpy")
-
-
-    def MMS_Y_haut(x, y, P):
-        return f_dT_MSS_dy(x, y, P)
-
-
-    def MMS_Y_bas(x, y, P):
-        return -f_dT_MSS_dy(x, y, P)
-
-
-
+    def NULL(x, y, P):
+        return 0.
 
     # Conditions
 
     # %% Cas à tester
-    bcdata = (['DIRICHLET', MMS], ['DIRICHLET', MMS], ['DIRICHLET', MMS], ['DIRICHLET', MMS])
-    domain = [[-b, -L], [-b, L], [b, L], [b, -L]]
+    bcdata = (['DIRICHLET', MMS], ['NEUMANN', NULL],
+              ['NEUMANN', NULL], ['NEUMANN', NULL],
+              ['NEUMANN', NULL])
+    domain = {'type': 'cercle',
+              'points': [[-L, -H], [L, -H], [L, H], [-L, H]],
+              'radius': R}
 
     #%% Initialisation du cas et du processing
-    case_classic = Case(rho, 1, source_terms=q, velocity_field=flow_velocity, domain=domain)
+    case_classic = Case(rho, gamma=k/Cp, source_terms=q, velocity_field=flow_velocity, domain=domain)
+
     processing = Processing(case_classic, bcdata)
     processing.set_analytical_function(MMS)
 
@@ -153,9 +121,9 @@ if exe_case == "Y" or exe_case == "y":
     rep = input("   Exécuter? (Y ou N): ")
     if rep == "Y" or rep == "y":
         P = ask_P()
-        simulations_parameters = [{'mesh_type': 'QUAD', 'Nx': 10, 'Ny': 10, 'method': 'CENTRE', 'P': P},
-                                  {'mesh_type': 'QUAD', 'Nx': 20, 'Ny': 20, 'method': 'CENTRE', 'P': P},
-                                  {'mesh_type': 'QUAD', 'Nx': 40, 'Ny': 40, 'method': 'CENTRE', 'P': P}]
+        simulations_parameters = [{'mesh_type': 'TRI', 'Nx': 10, 'Ny': 10, 'Nc': 10, 'method': 'CENTRE', 'P': P},
+                                  {'mesh_type': 'TRI', 'Nx': 20, 'Ny': 20, 'Nc': 20, 'method': 'CENTRE', 'P': P},
+                                  {'mesh_type': 'TRI', 'Nx': 40, 'Ny': 40, 'Nc': 40, 'method': 'CENTRE', 'P': P}]
         postprocessing_parameters = {'pyvista': {'simulation': [0, 1, 2]}}
         execute(processing, simulations_parameters, postprocessing_parameters,
                 sim_name="couetteclassic_convergence_quad")

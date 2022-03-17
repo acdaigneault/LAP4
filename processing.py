@@ -184,7 +184,17 @@ class Processing:
 
         """
         mesher = MeshGenerator()
-        mesh_obj = mesher.rectangle_points(self.case.get_domain(), mesh_parameters)
+        domain = self.case.get_domain()
+
+
+        # Construit le maillage selon la géométrie du domain
+        if domain['type'] == 'rectangle':
+            mesh_obj = mesher.rectangle_points(domain['points'], mesh_parameters)
+        elif domain['type'] == 'cercle':
+            mesh_obj = mesher.circle_points(domain['points'], domain['radius'], mesh_parameters)
+
+
+
         conec = MeshConnectivity(mesh_obj, verbose=False)
         conec.compute_connectivity()
 
