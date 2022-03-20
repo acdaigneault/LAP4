@@ -148,23 +148,25 @@ class Processing:
             # Affiche les solutions avec la fonction tricontourf() de matplotlib
             if param_name == 'solutions':
                 for sim in pp_params[param_name]['simulation']:
-                    postprocessing.show_solutions(i_sim=sim)
+                    postprocessing.show_solutions(i_sim=sim,only_num=pp_params[param_name]['Only_Num'])
 
             # Affiche la solution selon un plan en x et un en y
             elif param_name == 'plans':
                 for sim in pp_params[param_name]['simulation']:
                     postprocessing.show_plan_solutions(i_sim=sim,
                                                        x_coupe=pp_params[param_name]['x'],
-                                                       y_coupe=pp_params[param_name]['y'])
+                                                       y_coupe=pp_params[param_name]['y'],
+                                                       only_num=pp_params[param_name]['Only_Num'],
+                                                       plan_sortie=pp_params[param_name]['Exit'])
 
             # Calcule l'ordre de convergence et montre l'erreur L2 selon la longueur caractéristique l2
             elif param_name == 'error':
-                postprocessing.show_error()
+                postprocessing.show_error(method=pp_params[param_name]['Method'])         
 
             # Montre les résultats numériques et analytique par PyVista avec le maillage
             elif param_name == 'pyvista':
                 for sim in pp_params[param_name]['simulation']:
-                    postprocessing.show_pyvista(sim)
+                    postprocessing.show_pyvista(sim,only_num=pp_params[param_name]['Only_Num'],isovalues=pp_params[param_name]['Iso_lines'])
             else:
                 print(f'Demande de post traitement {param_name} invalide.')
 

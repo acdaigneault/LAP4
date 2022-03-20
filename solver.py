@@ -192,6 +192,7 @@ class FVM:
 
         # Variables locales
         rho, gamma = case.get_physical_properties()
+        gamma=P
         source_term = case.get_sources()
         U = case.get_velocity_field()
         analytical_function = self.get_analytical_function()
@@ -221,7 +222,6 @@ class FVM:
 
                 # Convection
                 F = np.dot(U(xa, ya, P), n) * dA  # Débit massique qui traverse la face
-
                 # Calcule les projections de vecteurs unitaires
                 PNKSI = np.dot(n, eKSI)       # Projection de n sur ξ
                 PKSIETA = np.dot(eKSI, eETA)  # Projection de ξ sur η
@@ -230,7 +230,7 @@ class FVM:
 
                 # Calcule le terme correction de cross-diffusion
                 Sdc = -gamma * (PKSIETA/PNKSI) * 0.5*np.dot((GRAD[right_elem] + GRAD[left_elem]), eETA) * dA
-
+                
                 # Ajoute la contribution de la convection à la matrice A
                 if method == "CENTRE":
                     # Remplissage de la matrice et du vecteur
@@ -287,7 +287,6 @@ class FVM:
                     # Calcule du terme de cross-diffusion selon les phi aux noeuds de l'arête en x et y
                     phi0, phi1 = bc_value(pt0[0], pt0[1], P), bc_value(pt1[0], pt1[1], P)
                     Sdc = -gamma * (PKSIETA/PNKSI) * rho * (phi1 - phi0)/dETA * dA
-
 
                     if method == "CENTRE":
                         A[element, element] += D
